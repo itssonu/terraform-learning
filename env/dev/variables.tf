@@ -12,3 +12,7 @@ variable "project_name" {
   description = "Environment"
   type        = string
 }
+variable "domain_name" {
+  description = "Environment"
+  type        = string
+}
