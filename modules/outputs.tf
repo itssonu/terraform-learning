@@ -3,6 +3,10 @@ output "vpc_id" {
   value       = module.vpc.vpc_id
 }
 
-output "www-bucket-id" {
+output "s3_www-id" {
   value       = aws_s3_bucket.wwww.id
+}
+
+output "cloudfront_domain_name" {
+  value = aws_cloudfront_distribution.www.domain_name
 }

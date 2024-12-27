@@ -32,20 +32,24 @@ resource "aws_s3_bucket_website_configuration" "www" {
   }
 }
 
-# data "aws_iam_policy_document" "www" {
-#     statement {
-#       actions = [ "s3:GetObject" ]
-#       resources = [ "${aws_s3_bucket.wwww.arn}/*" ]
-#       principals {
-#         type = "Service"
-#         identifiers = ["cloudfront.amazonaws.com"]
-#       }
-#       condition {
-#           test     = "StringEquals"
-#       variable = "AWS:SourceArn"
-#       values   = [aws_cloudfront_distribution.website.arn]
-#     }
-#       }
-#     }
-# }
+data "aws_iam_policy_document" "www" {
+  statement {
+    actions = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.wwww.arn}/*"]
+    principals {
+      type = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceArn"
+      values   = [aws_cloudfront_distribution.www.arn]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "bucket_policy" {
+  bucket = aws_s3_bucket.wwww.id
+  policy = data.aws_iam_policy_document.www.json
+}
 
