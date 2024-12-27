@@ -1,4 +1,4 @@
-module "vpc" {
+module "project_sonu" {
   source = "../../modules"
   project_name = var.project_name
   env = var.env
