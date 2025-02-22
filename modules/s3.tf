@@ -1,6 +1,7 @@
 resource "aws_s3_bucket" "wwww" {
   bucket = "www-${local.name_prefix}"
   tags = local.common_tags
+  force_destroy = true
 }
 
 resource "aws_s3_bucket_public_access_block" "wwww" {
@@ -52,4 +53,3 @@ resource "aws_s3_bucket_policy" "bucket_policy" {
   bucket = aws_s3_bucket.wwww.id
   policy = data.aws_iam_policy_document.www.json
 }
-
