@@ -1,0 +1,487 @@
+body {
+	margin-top: 20px;
+}
+
+.mail-seccess {
+	text-align: center;
+	background: #fff;
+}
+
+.mail-seccess .success-inner {
+	display: inline-block;
+}
+
+.mail-seccess .success-inner h1 {
+	font-size: 100px;
+	text-shadow: 3px 5px 2px #3333;
+	color: #006DFE;
+	font-weight: 700;
+}
+
+.mail-seccess .success-inner h1 span {
+	display: block;
+	font-size: 25px;
+	color: #333;
+	font-weight: 600;
+	text-shadow: none;
+	margin-top: 20px;
+}
+
+.mail-seccess .success-inner p {
+	padding: 10px 15px 20px;
+}
+
+.mail-seccess .success-inner .btn {
+	color: #fff;
+}
+
+.canvasjs-chart-credit {
+	display: none !important;
+}
+
+.date-picker-container {
+	display: flex;
+	align-items: center;
+	width: 800px;
+	justify-content: space-between;
+}
+
+.date-picker-label {
+	margin-right: 10px;
+}
+
+.date-picker-wrapper {
+	display: flex;
+	align-items: center;
+	justify-content: space-around;
+	width: 300px;
+	height: 60px;
+}
+
+.icon-wrapper {
+	cursor: pointer;
+	margin-right: 10px;
+}
+
+.calendar-icon {
+	font-size: 28px !important;
+	/* Adjust the font size as needed */
+}
+
+.calendar-icon {
+	font-size: 20px;
+	/* Adjust icon size */
+}
+
+/* Customize date picker input */
+.custom-datepicker input {
+	width: 150px;
+	/* Adjust input field width */
+	padding: 8px;
+	font-size: 14px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+}
+
+.graph-container {
+	position: relative;
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.page-container {
+	position: relative;
+	width: 80%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	border: 3px solid #000;
+}
+
+.top-rectangle {
+	width: 100%;
+	height: 200px;
+	/* Adjust the height of the rectangle */
+}
+
+.top-content {
+
+	font-size: 30px;
+
+	color: #fff;
+
+	margin-bottom: 60px;
+
+}
+
+.center-content {
+
+	font-size: 20px;
+
+	color: #fff;
+
+	margin-bottom: 60px;
+
+}
+
+.bottom-right-text {
+
+	background: #3a66b6;
+
+	padding: 10px 40px;
+
+	border-radius: 10px;
+
+	text-transform: capitalize;
+
+	font-size: 48px;
+
+	color: #fff;
+
+}
+
+.row-container {
+	display: flex;
+	justify-content: space-between;
+	/* Align items in a row with space between */
+}
+
+.label {
+	/* Define your label styles here */
+	font-weight: bold;
+	color: #333;
+	/* Add any other styles you want */
+}
+
+.graph-container {
+	background: #fff;
+	box-shadow: rgba(60, 64, 67, 0.3) 0px 1px 2px 0px, rgba(60, 64, 67, 0.15) 0px 2px 6px 2px;
+	border-radius: 20px 0 0px 20px;
+	padding: 100px 20px;
+}
+
+.page-container {
+	background: #18479a;
+	border: 0;
+	border-radius: 0px 20px 20px 0;
+	justify-content: center;
+}
+
+.page-container .content {
+	padding: 30px;
+	text-align: center;
+}
+
+.page-container .icon {
+	font-size: 60px;
+	color: #fff;
+	display: inline-block;
+	margin-bottom: 10px;
+}
+
+.datepicker-wrap {
+	position: relative;
+}
+
+.datepicker-wrap input {
+	background: #f0f0f0;
+	border: none;
+	border-radius: 6px;
+	height: 50px;
+	padding: 12px 50px 12px 20px;
+	width: 100%;
+}
+
+.datepicker-wrap input:focus-visible {
+	outline: 0;
+}
+
+.datepicker-wrap .icon-wrapper {
+	position: absolute;
+	right: 0;
+	top: 0;
+	background: #18479a;
+	height: 100%;
+	margin-right: 0;
+	padding: 10px;
+	border-radius: 0 6px 6px 0;
+}
+
+.icon-wrapper svg {
+	color: #fff;
+	font-size: 22px !important;
+}
+
+.stats-cards {
+	margin-bottom: 60px;
+}
+
+.stats-cards .item {
+	background: #18479a;
+	border-radius: 20px;
+	padding: 40px 30px;
+	text-align: center;
+}
+
+.stats-cards .item .title {
+	font-size: 24px;
+	color: #ffffff;
+	font-weight: 600;
+	margin-bottom: 24px;
+	height: 63px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.stats-cards .icon {
+	margin-bottom: 4px;
+	display: inline-block;
+	font-size: 40px;
+	color: #ffffff;
+}
+
+.stats-cards .item .count {
+	background: #3a66b6;
+	display: inline-block;
+	color: #ffffff;
+	padding: 20px 20px;
+	font-size: 30px;
+	border-radius: 10px;
+	width: 100px;
+	font-weight: 600;
+}
+
+.graphs-wrap {
+	margin-bottom: 60px;
+}
+
+.graph-card {
+	background: #fff;
+	box-shadow: rgba(60, 64, 67, 0.3) 0px 1px 2px 0px, rgba(60, 64, 67, 0.15) 0px 2px 6px 2px;
+	border-radius: 20px;
+	padding: 40px 20px;
+}
+
+.form-check-input {
+	width: 300px;
+}
+
+.tabs-wrap {
+	background: #fff;
+	box-shadow: rgba(60, 64, 67, 0.3) 0px 1px 2px 0px, rgba(60, 64, 67, 0.15) 0px 2px 6px 2px;
+	border-radius: 20px;
+}
+
+.tabs-wrap .nav-pills {
+	background: #18479a;
+	padding: 20px 20px;
+	border-radius: 20px 20px 0 0;
+}
+
+.tabs-wrap .nav-link {
+	font-size: 20px;
+	padding: 10px 10px;
+	color: #a7c7ff;
+}
+
+.tabs-wrap .nav-link:hover {
+	color: #fff;
+}
+
+.tabs-wrap .nav-link.active {
+	background-color: transparent !important;
+	color: #fff;
+	font-weight: 600;
+	border-radius: 0;
+}
+
+.tabs-wrap .tab-content {
+	padding: 40px;
+	text-align: left;
+}
+
+.tab-content label {
+	font-weight: 600;
+	font-size: 18px;
+}
+
+.tab-content input {
+	background: #f2f2f2;
+	border: none;
+	border-radius: 6px;
+	height: 60px;
+	padding: 12px 20px;
+	width: 100%;
+}
+
+.tab-content textarea {
+	background: #f2f2f2;
+	border: none;
+	border-radius: 6px;
+	padding: 12px 20px;
+	width: 100%;
+}
+
+.template-radio-btn {
+	background: #f1f4fa;
+	padding: 12px 40px;
+	border-radius: 8px;
+	border-color: #18479a;
+	color: #18479a;
+	font-size: 18px;
+	font-weight: 600;
+}
+
+
+
+.template-radio-btn.form-check .form-check-input {
+	margin-left: 0px;
+	margin-right: 10px;
+}
+
+.template-radio-btn .form-check-input:checked {
+	background-color: #18479a;
+	border-color: #18479a;
+}
+
+.ql-editor {
+	font-size: 15px;
+	/* Set your desired font size */
+}
+
+.reference-variable {
+	width: 100%;
+	margin-top: 2px;
+	font-size: 20px;
+	background-color: #18479a;
+	text-align: center;
+	border-radius: "20px";
+	color: white;
+}
+
+.reference-variable:hover {
+	color: black;
+	background-color: white;
+	border-color: #000;
+	border-radius: "20px";
+}
+
+.package-cards .main-heading {
+	font-weight: 700;
+	margin-bottom: 48px;
+}
+
+.package-cards .item {
+	background: #FCFCFC;
+	border-radius: 10px;
+	border: 1px solid #c9c9c9;
+	margin-bottom: 30px;
+}
+
+.package-cards .item .title {
+	background: #18479a;
+	color: #fff;
+	padding: 16px;
+	font-size: 26px;
+	border-radius: 10px 10px 0 0;
+	text-transform: uppercase;
+}
+
+.package-cards .item .card-content p {
+	padding: 30px 20px;
+	font-size: 20px;
+	background: #F7F9FC;
+	color: #000;
+	margin-bottom: 0;
+}
+
+.package-cards .item .card-content p span.price {
+	font-size: 36px;
+	color: #18479a;
+	font-weight: 600;
+}
+
+.package-cards .item .card-content ul {
+	list-style-type: disclosure-closed;
+	text-align: left;
+	color: #000;
+	padding: 30px 50px;
+}
+
+.package-cards .item .card-content ul li {
+	font-size: 20px;
+	margin-bottom: 30px;
+	line-height: 30px;
+}
+
+.package-cards.package-section {
+	background: #fafafa;
+	padding: 20px 60px;
+	margin-top: 10px;
+}
+
+.package-cards .item .card-content p.price-quote {
+	font-size: 36px;
+	color: #18479a;
+}
+
+.selected {
+	border: 2px solid #18479A;
+	/* or any color you prefer */
+	box-shadow: 0 0 10px rgba(24, 71, 154, 0.5);
+	/* optional for better visual effect */
+}
+
+.next-button-container {
+	text-align: center;
+	margin-top: 30px;
+}
+
+.next-button {
+	background-color: #18479A;
+	color: white;
+	padding: 10px 20px;
+	border: none;
+	cursor: pointer;
+	font-size: 16px;
+	border-radius: 5px;
+}
+
+.next-button:hover {
+	background-color: #163B73;
+}
+
+.btn-primary {
+	background-color: #18479a;
+	color: white;
+	border: none;
+	padding: 10px 20px;
+	font-size: 16px;
+	border-radius: 5px;
+	cursor: pointer;
+}
+
+.btn-primary:hover {
+	background-color: #18479a;
+}
+
+.custom-swal-button {
+	background-color: #18479A;
+	color: white;
+	padding: 10px 20px;
+	border: none;
+	cursor: pointer;
+	font-size: 16px;
+	border-radius: 5px;
+}
+
+.custom-swal-icon {
+	color: #18479a !important;
+}
+
+.custom-swal-icon {
+	color: #18479a !important;
+}

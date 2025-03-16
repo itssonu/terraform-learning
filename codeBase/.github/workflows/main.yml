@@ -1,0 +1,110 @@
+name: Update Infrastructure Code
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy (dev, qa, prod)'
+        required: true
+        default: 'dev'
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: 171395134194.dkr.ecr.us-east-1.amazonaws.com
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      run: |
+        aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+
+    - name: Terraform Init
+      run: terraform -chdir=./infrastructure/environments/${{ github.event.inputs.environment }} init
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.12'
+
+    - name: Set up Node 20
+      uses: actions/setup-node@v2
+      with:
+        node-version: '20'
+
+    - name: Create Lambda Layer
+      run: |
+        mkdir -p mongo_layer/python
+        cd mongo_layer/python
+        python -m pip install pymongo -t .
+        cd ..
+        zip -r docdb_access_lambda_layer.zip .
+        mv docdb_access_lambda_layer.zip ../infrastructure
+        cd ..
+        rm -rf mongo_layer
+
+    - name: Build and push ProcessingFileQueue image
+      env:
+        ECR_REPOSITORY: ${{ github.event.inputs.environment }}_demandpro_pfq_ecr_repo
+      run: |
+        cd ProcessingFileQueue
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+    - name: Build and push auto-settlement-pro-api image
+      env:
+        ECR_REPOSITORY: ${{ github.event.inputs.environment }}_demandpro_api_ecr_repo
+      run: |
+        cd auto-settlement-pro-api
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+    - name: Prepare Lambda function
+      run: |
+        cd infrastructure/lambdas
+        zip sqsProcesser.zip ./sqsProcesser.js
+
+    - name: Set Terraform variables
+      run: |
+        echo "TF_VAR_service_api_key=${{ secrets.SERVICE_API_KEY }}" >> $GITHUB_ENV
+        echo "TF_VAR_anthropic_api_key=${{ secrets.ANTHROPIC_API_KEY }}" >> $GITHUB_ENV
+        echo "TF_VAR_dev_doc_db_pswd=${{ secrets.DEV_DOC_DB_PSWD }}" >> $GITHUB_ENV
+        echo "TF_VAR_qa_doc_db_pswd=${{ secrets.QA_DOC_DB_PSWD }}" >> $GITHUB_ENV
+        echo "TF_VAR_prod_doc_db_pswd=${{ secrets.PROD_DOC_DB_PSWD }}" >> $GITHUB_ENV
+
+    - name: Terraform Apply
+      run: |
+        cd infrastructure/environments/${{ github.event.inputs.environment }}
+        terraform apply -auto-approve -replace="module.demandpro_core.aws_lambda_function.api_app"
+        terraform apply -auto-approve -replace="module.demandpro_core.aws_ecs_service.pfq_service"
+        terraform apply -auto-approve
+
+    - name: Set React environment variables
+      run: |
+        echo "REACT_APP_API_BASE_URL=$(terraform -chdir=./infrastructure/environments/${{ github.event.inputs.environment }} output -raw api_base_url 2>/dev/null | grep '^http' | sed 's/::debug::.*$//')" >> $GITHUB_ENV
+        echo "REACT_APP_PFQ_BASE_URL=$(terraform -chdir=./infrastructure/environments/${{ github.event.inputs.environment }} output -raw ecs_pfq_url 2>/dev/null | grep '^http' | sed 's/::debug::.*$//'):5000" >> $GITHUB_ENV
+        echo "REACT_APP_LOCAL_CRYPTO_SECRET=CRYPTO_SECRET" >> $GITHUB_ENV
+        echo "REACT_APP_FE_BASE_URL=$(terraform -chdir=./infrastructure/environments/${{ github.event.inputs.environment }} output -raw domain_name 2>/dev/null | grep '^[a-zA-Z0-9]' | sed 's/::debug::.*$//')" >> $GITHUB_ENV
+      
+    - name: Build and deploy UI
+      run: |
+        cd auto-settlement-pro-ui
+        node -v
+        npm -v
+        npm install
+        CI=false npm run build
+        aws s3 rm s3://www.${{ github.event.inputs.environment }}-demandproinfra --recursive
+        aws s3 sync ./build/ s3://www.${{ github.event.inputs.environment }}-demandproinfra

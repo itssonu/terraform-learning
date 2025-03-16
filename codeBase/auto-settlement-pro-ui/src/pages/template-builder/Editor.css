@@ -1,0 +1,27 @@
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value]::before,
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value]::before {
+    content: attr(data-value) !important;
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value]::before {
+    content: attr(data-value) !important;
+}
+
+.ql-editor {
+    /* white-space: normal; */
+}
+
+.quill>* {
+    /* border-color: inherit !important; */
+    color: black !important;
+}
+
+.ql-snow .ql-picker.ql-font {
+    width: 150px !important;
+    /* white-space: nowrap; */
+}
+
+.pre {
+    /* white-space: pre-wrap !important; */
+}

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Hello world!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: sans-serif;
+        }
+
+        a {
+            text-decoration: none;
+            line-height: 1;
+        }
+
+        body {
+            padding: 35px 25px;
+        }
+
+        .logo {
+            max-width: 130px;
+        }
+
+        .line-0 {
+            line-height: 0;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .overflow-hiddden {
+            overflow: hidden;
+        }
+
+        .f-left {
+            float: left;
+        }
+
+        .header {
+            margin-bottom: 35px;
+        }
+
+        .header_heading {
+            font-size: 14px;
+            margin-bottom: 5px;
+            color: #2f2f2f;
+        }
+
+        .header_info {
+            line-height: 1.5;
+            display: inline-block;
+            font-size: 10px;
+            color: #505050;
+        }
+
+        .section_heading {
+            font-weight: normal;
+            font-size: 18px;
+            color: #5d99c1;
+            margin-bottom: 10px;
+        }
+
+        .section_sub_heading {
+            font-weight: normal;
+            font-size: 12px;
+            color: #a7a9ae;
+        }
+
+        .body_txt {
+            font-weight: normal;
+            font-size: 12px;
+            color: #505050;
+            line-height: 1.3;
+        }
+
+        .invoice_table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .invoice_table td {
+            padding: 5px;
+        }
+
+
+
+        .table_head {
+            background-color: #dce9f1;
+        }
+
+        .table_body td {
+            padding-top: 15px;
+            padding-bottom: 15px;
+        }
+
+        .table_foot {
+            border-top: 1px dashed #babec5;
+        }
+
+        .table_heading {
+            font-size: 12px;
+            color: #5494bd;
+        }
+
+        .total_amount {
+            font-weight: 700;
+            color: #000000;
+            font-size: 18px;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <h2 class="header_heading"><img class="logo" src="{{companyLogo}}" alt="logo" /></h2>
+        <div class="line-0">
+            <p class="header_info">650 Town Center Dr</p>
+        </div>
+        <div class="line-0">
+            <p class="header_info">Costa Mesa, CA 92626 US</p>
+        </div>
+        <div class="line-0"><a class="header_info" target="_blank" href="mailto:info@demandpro.ai">info@demandpro.ai</a>
+        </div>
+        <div class="line-0"><a class="header_info" target="_blank" href="https://www.demandpro.ai/">www.demandpro.ai</a>
+        </div>
+    </header>
+
+    <div>
+        <h3 class="section_heading">
+            RECEIPT
+        </h3>
+        <div class="overflow-hiddden">
+            <div class="f-left" style="width: 60%;">
+                <p class="section_sub_heading">BILL TO</p>
+                <p class="body_txt">{{ companyName }}</p>
+                <p class="body_txt">{{ address1 }}</p>
+                <p class="body_txt">{{ address2 }}</p>
+                <p class="body_txt">{{ address3 }}</p>
+            </div>
+            <div>
+                <div class="f-left" style="margin-right: 20px;">
+                    <p class="section_sub_heading">RECEIPT</p>
+                    <p class="section_sub_heading">DATE</p>
+                </div>
+                <div>
+                    <p class="body_txt">{{ caseID }}</p>
+                    <p class="body_txt">{{ date }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <table class="invoice_table">
+        <thead class="table_head">
+            <tr>
+                <td class="table_heading">
+                    SERVICE
+                </td>
+                <td class="table_heading">
+                    DESCRIPTION
+                </td>
+                <td class="table_heading text-right">
+                    AMOUNT
+                </td>
+            </tr>
+        </thead>
+        <tbody class="table_body">
+            <tr>
+                <td>
+                    <p class="body_txt">{{ caseName }} </p>
+                </td>
+                <td>
+                    <p class="body_txt"> Medical Record Summary</p>
+                </td>
+                <td>
+                    <p class="body_txt text-right">{{ price }}</p>
+                </td>
+            </tr>
+        </tbody>
+        <tfoot class="table_foot">
+            <td colspan="2">
+                <p class="section_sub_heading text-center">BALANCE DUE </p>
+            </td>
+            <td>
+                <p class="total_amount text-right">${{ price }}</p>
+            </td>
+        </tfoot>
+    </table>
+</body>
+
+</html>

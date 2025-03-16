@@ -1,0 +1,174 @@
+.input-field {
+    width: 100%;
+}
+
+.input-field-style {
+    width: 100%;
+    background: #F2F2F2;
+    border: none;
+    padding: 0.375rem 0.75rem;
+    border-radius: 6px;
+    height: 40px;
+}
+
+.error-message {
+    margin-top: 4px;
+    margin-left: 4px;
+    color: red;
+}
+
+
+.input-field-dropdown {
+
+    width: 100%;
+    background: #F2F2F2;
+    border: none;
+    padding: 0.375rem 0.75rem;
+    border-radius: 6px;
+    height: 50px;
+}
+
+.textarea-field-style {
+    width: 100%;
+    background: #F2F2F2;
+    border: none;
+    padding: 0.375rem 0.75rem;
+    border-radius: 6px;
+    height: 160px;
+}
+
+.Pdftextarea-field-style {
+    width: 100%;
+    margin-top: 0px;
+    /* background: #F2F2F2;     */
+    border: none;
+    /* padding: 0.375rem 0.75rem; */
+    border-radius: 6px;
+    height: 160px;
+}
+
+.input-field-style-dollar-sign {
+    width: 100%;
+    background: #F2F2F2;
+    border: none;
+    padding: 0.375rem 2.75rem;
+    border-radius: 6px;
+    height: 50px;
+}
+
+
+.label-style {
+    margin-bottom: 0.5rem;
+    color: #292B2E;
+}
+
+.add-btn-style {
+    background-color: #18479A;
+    border-radius: 6px;
+
+}
+
+.pdfContainer {
+    width: 2000px;
+    background-color: aqua;
+}
+
+
+.custom-checkbox {
+    display: block;
+    position: relative;
+    padding-left: 26px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    font-size: 20px;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    margin-right: 10px;
+
+
+}
+
+.custom-checkbox label {
+    margin-inline: unset !important;
+    font-size: 13px;
+    color: #2F3846;
+    position: relative;
+}
+
+.custom-checkbox.cs-right {
+    padding-left: 0px;
+    margin-right: 46px;
+
+    .checkmark-cs {
+        right: -25px;
+        left: unset;
+    }
+}
+
+/* Hide the browser's default checkbox */
+.custom-checkbox input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+/* Create a custom checkbox */
+.checkmark-cs {
+    position: absolute;
+    left: -28px;
+    bottom: 0px;
+    height: 25px;
+    width: 25px;
+    background-color: #fff;
+    border: 2px solid rgb(204, 204, 204);
+    border-radius: 4px;
+    top: -3px;
+}
+
+
+
+/* When the checkbox is checked, add a blue background */
+.custom-checkbox input:checked~.checkmark-cs {
+    background-color: var(--theme);
+}
+
+/* Create the checkmark/indicator (hidden when not checked) */
+.checkmark-cs:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+/* Show the checkmark when checked */
+.custom-checkbox input:checked~.checkmark-cs:after {
+    display: block;
+}
+
+/* Style the checkmark/indicator */
+.custom-checkbox .checkmark-cs:after {
+    left: 5px;
+    left: 6px;
+    top: 2px;
+    width: 8px;
+    height: 12px;
+    border: solid white;
+    border-width: 0 3px 3px 0;
+    transform: rotate(45deg);
+}
+
+.progressbar-Border-Style {
+    width: '10rem';
+    height: 32;
+    border: '2.7px solid black';
+    color: 'black';
+    border-Radius: '10px';
+    text-Align: 'center',
+}
+
+#fileInputStyle{
+    display: 'none';
+}

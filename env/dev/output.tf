@@ -6,6 +6,6 @@ output "vpc_id" {
 output "www-bucket-id" {
   value       = module.project_sonu.s3_www-id
 }
-output "website_url" {
+output "cloudfront_domain_name" {
   value       = module.project_sonu.cloudfront_domain_name
 }
