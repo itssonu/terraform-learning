@@ -49,6 +49,22 @@ resource "aws_api_gateway_stage" "api" {
   deployment_id = aws_api_gateway_deployment.api.id
 
   description   = "${var.env} stage for API Gateway"
+
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.api.arn
+    format = jsonencode({
+      requestId       = "$context.requestId"
+      ip             = "$context.identity.sourceIp"
+      requestTime    = "$context.requestTime"
+      httpMethod     = "$context.httpMethod"
+      resourcePath   = "$context.resourcePath"
+      status         = "$context.status"
+      protocol       = "$context.protocol"
+      responseLength = "$context.responseLength"
+    })
+  }
+
+  depends_on = [aws_cloudwatch_log_group.api]
 }
 
 resource "aws_api_gateway_deployment" "api" {
@@ -58,4 +74,50 @@ resource "aws_api_gateway_deployment" "api" {
   ]
 
   rest_api_id = "${aws_api_gateway_rest_api.api.id}"
+}
+
+# log
+
+data "aws_iam_policy_document" "api_gateway_assume_role" {
+  statement {
+    effect = "Allow"
+    principals {
+      type        = "Service"
+      identifiers = ["apigateway.amazonaws.com"]
+    }
+    actions = ["sts:AssumeRole"]
+  }
+}
+resource "aws_iam_role" "api_gateway_logging_role" {
+  name = "${var.env}-api-gateway-logging-role"
+  assume_role_policy = data.aws_iam_policy_document.api_gateway_assume_role.json
+}
+
+# Define IAM Policy for API Gateway to Write Logs
+data "aws_iam_policy_document" "api_gateway_logging_policy" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:DescribeLogGroups",
+      "logs:DescribeLogStreams",
+      "logs:PutLogEvents",
+      "logs:GetLogEvents",
+      "logs:FilterLogEvents"
+    ]
+    resources = ["*"]
+  }
+}
+
+# Attach Policy to IAM Role
+resource "aws_iam_role_policy" "api_gateway_logging_policy" {
+  name   = "${var.env}-api-gateway-logging-policy"
+  role   = aws_iam_role.api_gateway_logging_role.id
+  policy = data.aws_iam_policy_document.api_gateway_logging_policy.json
+}
+
+resource "aws_cloudwatch_log_group" "api" {
+  name = "/aws/api-gateway/${aws_api_gateway_rest_api.api.name}"
+  retention_in_days = 7
 }
