@@ -44,3 +44,12 @@ resource "aws_lambda_function" "api" {
 
   depends_on = [ aws_security_group.allow-in, aws_iam_role.iam_for_lambda, aws_ecr_repository.api ]
 }
+
+resource "aws_lambda_permission" "api" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = "${aws_lambda_function.api.function_name}"
+  principal     = "apigateway.amazonaws.com"
+
+  source_arn = "${aws_api_gateway_rest_api.api.execution_arn}/*/*"
+}

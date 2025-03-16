@@ -13,7 +13,7 @@ terraform -chdir=./env/${ENV} apply -auto-approve
 echo "setting env variables ui..."
 
 export REACT_APP_FE_BASE_URL=$(terraform -chdir=./env/${ENV} output --raw cloudfront_domain_name)
-export REACT_APP_API_BASE_URL=http://localhost:9005-tf
+export REACT_APP_API_BASE_URL=$(terraform -chdir=./env/${ENV} output --raw api_base_url)
 export REACT_APP_PFQ_BASE_URL=http://localhost:5000-tf
 export REACT_APP_LOCAL_CRYPTO_SECRET=CRYPTO_SECRET-tf
 

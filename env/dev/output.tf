@@ -9,3 +9,6 @@ output "www-bucket-id" {
 output "cloudfront_domain_name" {
   value       = module.project_sonu.cloudfront_domain_name
 }
+output "api_base_url" {
+  value = module.project_sonu.api_base_url
+}
