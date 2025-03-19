@@ -46,5 +46,10 @@ resource "aws_lambda_function" "api" {
 
   architectures = ["arm64"]
 
-  depends_on = [ aws_security_group.allow-in, aws_iam_role.iam_for_lambda, aws_ecr_repository.api ]
+  depends_on = [ aws_security_group.allow-in, aws_iam_role.iam_for_lambda, aws_ecr_repository.api, aws_cloudwatch_log_group.api ]
+}
+
+resource "aws_cloudwatch_log_group" "api" {
+  name              = "/aws/lambda/${local.name_prefix}-api"
+  retention_in_days = 14
 }
