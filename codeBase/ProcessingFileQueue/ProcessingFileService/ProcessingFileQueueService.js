@@ -37,6 +37,8 @@ const getFileTextAndImage = async (fileArray, caseId, userId, socketService, soc
     // Wait for all processing to complete while maintaining order
     const results = await Promise.all(processingPromises);
 
+    console.log("Done extracting data")
+
     // await socketService[socketServiceFunc](`Extracted`, caseId, userId, domainName);
 
     // Collect all paths in order
@@ -100,6 +102,8 @@ const getFileTextAndImage = async (fileArray, caseId, userId, socketService, soc
     });
 
     const medicalTypePromiseRes = await Promise.all(medicalTypePromiseArr);
+
+    console.log("Got Medical Type")
 
     return {
         extractedPdfTextArray,

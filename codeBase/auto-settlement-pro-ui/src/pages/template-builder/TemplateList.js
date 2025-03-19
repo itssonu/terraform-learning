@@ -67,7 +67,15 @@ const TemplateList = () => {
         onChangeSettlementTable,
         deleteTemplate,
         getPages,
-        removeTemplateFile
+        removeTemplateFile,
+        onChangeFontSize,
+        onChangeTextAlign,
+        onChangeIsBold,
+        onChangeIsItalic,
+        onChangeParagraphSpacingBefore,
+        onChangeParagraphSpacingAfter,
+        onChangeBulletSpacingBefore,
+        onChangeBulletSpacingAfter
     } = useTemplateContext();
 
     return (
@@ -178,7 +186,9 @@ const TemplateList = () => {
                                                             <div class="uploaded-doc d-flex justify-content-between">
                                                                 <span class="d-flex align-items-center gap-2">
                                                                     <UploadTemplate />
-                                                                    Demand Template File
+                                                                    <span style={{width:"280px",whiteSpace: "nowrap", overflow: "hidden",textOverflow: "ellipsis"}}>
+                                                                    {item?.data?.templateFile.split("/").at("-1")}
+                                                                    </span>
                                                                 </span>
                                                                 <div className='action-icons'>
                                                                     <button className='outline-btn-hover btn btn-theme btn-border btn-sm' type='button' onClick={() => removeTemplateFile(item)} style={{ minWidth: "auto" }}>
@@ -366,6 +376,14 @@ const TemplateList = () => {
                     templateBuilderTypeToggler,
                     demandType,
                     onChangeSettlementTable,
+                    onChangeFontSize,
+                    onChangeTextAlign,
+                    onChangeIsBold,
+                    onChangeIsItalic,
+                    onChangeParagraphSpacingBefore,
+                    onChangeParagraphSpacingAfter,
+                    onChangeBulletSpacingBefore,
+                    onChangeBulletSpacingAfter
                 }}
             />}
         </>

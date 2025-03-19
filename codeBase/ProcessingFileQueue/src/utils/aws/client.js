@@ -5,7 +5,12 @@ const Anthropic = require('@anthropic-ai/sdk')
 AWS.config.update({
     accessKeyId: process.env.AWS_ACCESS_KEY,
     secretAccessKey: process.env.AWS_SECRET_KEY,
-    region: process.env.AWS_REGION
+    region: process.env.AWS_REGION,
+    httpOptions: {
+      timeout: 300000,      // 5 minutes for request timeout
+      connectTimeout: 60000 // 1 minute for connection timeout
+    },
+    maxRetries: 15
 })
 
 

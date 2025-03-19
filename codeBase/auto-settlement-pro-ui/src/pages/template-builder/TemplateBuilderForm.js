@@ -5,7 +5,7 @@ import TemplateEditableField from "./TemplateEditableField";
 import { CASE_TYPE, CASE_TYPE_DEMANDS, CASE_TYPE_MAP, DEMAND, DEMAND_GROUP, DEMAND_TYPE } from '../../utils/enum';
 import Constants from '../../Constants';
 import XSelect from '../../components/common/XSelect';
-import { fontFamilyOptions } from '../../utils/constant';
+import { fontFamilyOptions, fontSizeOptions, textAlignOptions } from '../../utils/constant';
 
 const TemplateBuilderForm = (props) => {
     const {
@@ -23,7 +23,15 @@ const TemplateBuilderForm = (props) => {
         onChangeFontFamily,
         fontFamily,
         onChangeAmoutText,
-        onChangeSettlementTable
+        onChangeSettlementTable,
+        onChangeFontSize,
+        onChangeTextAlign,
+        onChangeIsItalic,
+        onChangeIsBold,
+        onChangeParagraphSpacingBefore,
+        onChangeParagraphSpacingAfter,
+        onChangeBulletSpacingBefore,
+        onChangeBulletSpacingAfter,
     } = props
 
     return (
@@ -41,26 +49,119 @@ const TemplateBuilderForm = (props) => {
                 </ul>
                 <div class="tab-content" id="pills-tabContent">
                     <div class="tab-pane fade show active" id="pills-home" role="tabpanel" aria-labelledby="pills-home-tab">
-                        <div class="content-box mb-6">
-                            <h3 class="mb-6 title-main">Template Title</h3>
-                            <div class="form-group mb-6">
-                                <XSelect
-                                    emptyOption={false}
-                                    label="Font Family"
-                                    value={fontFamily}
-                                    onChange={onChangeFontFamily}
-                                    options={fontFamilyOptions}
-                                    isCommon={true}
-                                />
+                    <div class="content-box mb-6">
+                        <h3 class="mb-6 title-main">Template Formatting Settings</h3>
+                        <div class="form-group mb-6">
+                            <XSelect
+                                emptyOption={false}
+                                label="Font Family"
+                                value={fontFamily}
+                                onChange={onChangeFontFamily}
+                                options={fontFamilyOptions}
+                                isCommon={true}
+                            />
+                        </div>
+                        <div class="form-group mb-6">
+                            <XSelect
+                                emptyOption={false}
+                                label="Font Size"
+                                value={templateData?.fontSize}
+                                onChange={onChangeFontSize}
+                                options={fontSizeOptions}
+                                isCommon={true}
+                            />
+                        </div>
+                        <div class="form-group mb-6">
+                            <XSelect
+                                emptyOption={false}
+                                label="Paragraph Alignment"
+                                value={templateData?.textAlign}
+                                onChange={onChangeTextAlign}
+                                options={textAlignOptions}
+                                isCommon={true}
+                            />
+                        </div>
+                        <div class="form-group mb-6">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="paragraphSpacingBefore">Before Paragraph Spacing (pt)</label>
+                                    <input 
+                                        type="number" 
+                                        class="form-control" 
+                                        id="paragraphSpacingBefore" 
+                                        value={templateData?.paragraphSpacingBefore || 120} 
+                                        onChange={onChangeParagraphSpacingBefore}
+                                        min="0"
+                                        step="1"
+                                    />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="paragraphSpacingAfter">After Paragraph Spacing (pt)</label>
+                                    <input 
+                                        type="number" 
+                                        class="form-control" 
+                                        id="paragraphSpacingAfter" 
+                                        value={templateData?.paragraphSpacingAfter || 120} 
+                                        onChange={onChangeParagraphSpacingAfter}
+                                        min="0"
+                                        step="1"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group mb-6">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="bulletSpacingBefore">Before Bullet Point Spacing (pt)</label>
+                                    <input 
+                                        type="number" 
+                                        class="form-control" 
+                                        id="bulletSpacingBefore" 
+                                        value={templateData?.bulletSpacingBefore || 10} 
+                                        onChange={onChangeBulletSpacingBefore}
+                                        min="0"
+                                        step="1"
+                                    />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="bulletSpacingAfter">After Bullet Point Spacing (pt)</label>
+                                    <input 
+                                        type="number" 
+                                        class="form-control" 
+                                        id="bulletSpacingAfter" 
+                                        value={templateData?.bulletSpacingAfter || 10} 
+                                        onChange={onChangeBulletSpacingAfter}
+                                        min="0"
+                                        step="1"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex">
+                            <div class="d-flex me-5">
+                                <label class="form-check-label me-3" for="flexSwitchCheckDefault">Bold</label>
+                                <label className="switch">
+                                    <input type="checkbox" checked={templateData.isBold} onChange={onChangeIsBold} />
+                                    <span className="slider"></span>
+                                </label>
                             </div>
                             <div class="d-flex">
-                                <label class="form-check-label me-3" for="flexSwitchCheckDefault">Display Howell Amount as Billed Amount</label>
+                                <label class="form-check-label me-3" for="flexSwitchCheckDefault">Italic</label>
                                 <label className="switch">
-                                    <input type="checkbox" checked={templateData.billedAmountHeading} onChange={onChangeAmoutText} />
+                                    <input type="checkbox" checked={templateData.isItalic} onChange={onChangeIsItalic} />
                                     <span className="slider"></span>
                                 </label>
                             </div>
                         </div>
+                        <div class="d-flex">
+                            <label class="form-check-label me-3" for="flexSwitchCheckDefault">Display Howell Amount as Billed Amount</label>
+                            <label className="switch">
+                                <input type="checkbox" checked={templateData.billedAmountHeading} onChange={onChangeAmoutText} />
+                                <span className="slider"></span>
+                            </label>
+                        </div>
+                    </div>
                         <div class="content-box mb-6">
                             <h3 class="mb-6 title-main">Firm Information</h3>
                             <div className="mb-6 text text-center upload-firm-logo file-input">

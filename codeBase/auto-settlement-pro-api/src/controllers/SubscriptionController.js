@@ -78,7 +78,7 @@ class SubscriptionController extends BaseController {
                     return new Promise((resolve, reject) => {
                         chargebee.invoice.create_for_charge_items_and_charges({
                             customer_id : customerId,
-                            auto_collection: "on",
+                            auto_collection: "off",
                             charges : [
                               {
                                 amount: amountInCents,
@@ -99,14 +99,9 @@ class SubscriptionController extends BaseController {
                     for (const entry of customers.list) {
                         const customerId = entry.customer.id;
                         const amount = totalBill; // Calculate your variable amount here
-
-                        if (amount > 0) {
-                            const chargeResult = await createCharge(customerId, amount);
-                            console.log(`Created charge for customer ${customerId}:`, chargeResult.invoice);
-                        } else {
-                            console.log(`No A la carte charges needed for customer ${customerId}`)
-                        }
                         
+                        const chargeResult = await createCharge(customerId, amount);
+                        console.log(`Created charge for customer ${customerId}:`, chargeResult.invoice);
                     }
                 } catch (error) {
                     console.error('Error processing company:', company, error);

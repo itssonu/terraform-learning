@@ -7,26 +7,35 @@ const { s3Client, textractClient } = require('../src/utils/aws/client');
 const crypto = require('crypto');
 const os = require('os');
 const { getLocalStorevalue } = require('../src/utils/localStore');
-const { localStoreObj } = require('../Contant');
+const { localStoreObj, gsPath } = require('../Contant');
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function retryWithExponentialBackoff(operation, maxRetries = 10, initialDelay = 1000) {
+async function retryWithExponentialBackoff(operation, maxRetries = 15, initialDelay = 1000) {
     let retries = 0;
     while (true) {
         try {
             return await operation();
         } catch (error) {
-            if (error.code === 'ProvisionedThroughputExceededException') {
-                if (retries >= maxRetries) {
-                    throw new Error(`Maximum retries (${maxRetries}) exceeded: ${error.message}`);
-                }
+            // Log the full error for debugging
+            console.log("Operation failed with error:", error);
+            
+            // Check if error is retryable
+            const isThrottling = error.code === 'ProvisionedThroughputExceededException';
+            const isNetworkError = [
+                'TimeoutError', 'NetworkingError', 'ETIMEDOUT', 
+                'ECONNRESET', 'ECONNREFUSED'
+            ].includes(error.code);
+            
+            if ((isThrottling || isNetworkError || error.retryable) && retries < maxRetries) {
                 const delay = initialDelay * Math.pow(2, retries);
-                console.log(`Rate limit exceeded. Retrying in ${delay}ms... (Attempt ${retries + 1}/${maxRetries})`);
-                await sleep(delay);
+                const jitteredDelay = delay * (0.8 + Math.random() * 0.4); // Add jitter
+                
+                console.log(`Request failed with ${error.code}. Retrying in ${Math.round(jitteredDelay)}ms... (Attempt ${retries + 1}/${maxRetries})`);
+                await sleep(jitteredDelay);
                 retries++;
             } else {
-                throw error;
+                throw new Error(`Maximum retries (${maxRetries}) exceeded or non-retryable error: ${error.message}`);
             }
         }
     }
@@ -79,7 +88,7 @@ async function convertExhibitFiles(pdfBuffer,exhibitDirectoryName) {
 
         // Continue with the original conversion process
         return new Promise((resolve, reject) => {
-            const gs = spawn("gs", [
+            const gs = spawn(gsPath, [
                 '-sDEVICE=jpeg',
                 '-dNOPAUSE',
                 '-dBATCH',
@@ -148,7 +157,7 @@ async function countPdfPages(pdfBuffer) {
 
         const escapedPath = tempFilePath.replace(/\\/g, '/');
         
-        const gs = spawn("gs", [
+        const gs = spawn(gsPath, [
             '-q',
             '-dNODISPLAY',
             '-c',
@@ -200,6 +209,84 @@ async function countPdfPages(pdfBuffer) {
     });
 }
 
+async function splitPdf({ pdfBuffer, fromPageNumber, toPageNumber }) {
+    return new Promise((resolve, reject) => {
+        // Create unique temporary file names
+        const uniqueId = crypto.randomBytes(8).toString('hex');
+        const tempInputPath = path.join(os.tmpdir(), `input-${uniqueId}.pdf`);
+        const tempOutputPath = path.join(os.tmpdir(), `output-${uniqueId}.pdf`);
+
+        // Helper function to clean up temporary files
+        function cleanupFiles() {
+            try {
+                if (fs.existsSync(tempInputPath)) fs.unlinkSync(tempInputPath);
+                if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
+            } catch (cleanupError) {
+                console.error('Error cleaning up temporary files:', cleanupError);
+            }
+        }
+
+        try {
+            // Write the input PDF to a temporary file
+            fs.writeFileSync(tempInputPath, pdfBuffer);
+
+            // Normalize paths for Ghostscript
+            const escapedInputPath = tempInputPath.replace(/\\/g, '/');
+            const escapedOutputPath = tempOutputPath.replace(/\\/g, '/');
+
+            // Construct Ghostscript command
+            const gsProcess = spawn(gsPath, [
+                '-q',                         // Quiet mode
+                '-dNOPAUSE',                  // Don't pause between pages
+                '-dBATCH',                    // Exit after processing
+                '-dSAFER',                    // Secure mode
+                '-sDEVICE=pdfwrite',          // Output device is PDF
+                `-dFirstPage=${fromPageNumber}`,    // Start page
+                `-dLastPage=${toPageNumber}`,       // End page
+                '-dPDFSETTINGS=/prepress',    // High quality output
+                '-dCompatibilityLevel=1.7',   // PDF version compatibility
+                `-sOutputFile=${escapedOutputPath}`,
+                escapedInputPath
+            ]);
+
+            let errorOutput = '';
+
+            // Collect any error output
+            gsProcess.stderr.on('data', (data) => {
+                errorOutput += data.toString();
+            });
+
+            // Handle process errors
+            gsProcess.on('error', (error) => {
+                cleanupFiles();
+                reject(new Error(`Ghostscript process error: ${error.message}`));
+            });
+
+            // Handle process completion
+            gsProcess.on('close', (code) => {
+                if (code !== 0) {
+                    cleanupFiles();
+                    return reject(new Error(`Ghostscript exited with code ${code}: ${errorOutput}`));
+                }
+
+                try {
+                    // Read the output file into a buffer
+                    const resultBuffer = fs.readFileSync(tempOutputPath);
+                    cleanupFiles();
+                    resolve(resultBuffer);
+                } catch (readError) {
+                    cleanupFiles();
+                    reject(new Error(`Failed to read output PDF: ${readError.message}`));
+                }
+            });
+
+        } catch (error) {
+            cleanupFiles();
+            reject(new Error(`PDF splitting failed: ${error.message}`));
+        }
+    });
+}
+
 const repairPdf = async (pdfBuffer) => {
     // Create a temporary file for the repaired PDF
     const tempRepairedPath = path.join(
@@ -216,7 +303,7 @@ const repairPdf = async (pdfBuffer) => {
     
     return new Promise((resolve, reject) => {
         // Use gs to "repair" the PDF by writing it again
-        const gs = spawn("gs", [
+        const gs = spawn(gsPath, [
             "-q", 
             "-dNOPAUSE", 
             "-dBATCH", 
@@ -252,8 +339,45 @@ async function robustCountPdfPages(pdfBuffer) {
     }
 }
 
+const isTextractJobComplete = async (client, jobId, awsServiceName = "getDocumentTextDetection") => {
+    const checkStatus = async () => {
+        const params = { JobId: jobId };
+        const response = await client[awsServiceName](params).promise();
+        return response.JobStatus;
+    };
+
+    const getResponse = async () => {
+        const params = { JobId: jobId };
+        const response = await client[awsServiceName](params).promise();
+        return response;
+    };
+
+    while (true) {
+        await sleep(1000); // Base polling interval
+
+        try {
+            const status = await retryWithExponentialBackoff(async () => await checkStatus());
+            console.log(`Job status: ${status}`);
+
+            if (status !== "IN_PROGRESS") {
+                if (status === "SUCCEEDED") {
+                    return status
+                }
+                console.error("Textract job did not succeed")
+                const resp = await retryWithExponentialBackoff(async () => await getResponse());
+                console.error(resp);
+                return null
+            }
+        } catch (err) {
+            console.error("Error checking job status:", err);
+            throw err;
+        }
+    }
+};
+
 async function pageNumber(s3FilePath, exhibitDirectoryName, fileIndex) {
     try {
+        const maxPagesPerChunk = 1000 //modified as requested by client
         const s3PathSplitArr = s3FilePath?.split("/");
         const s3ExhibitPath = s3PathSplitArr?.slice(0, -2)?.join("/");
         const fileName = path.basename(s3FilePath).split(".")[0];
@@ -262,7 +386,17 @@ async function pageNumber(s3FilePath, exhibitDirectoryName, fileIndex) {
         const metaData = object.Metadata;
         const pdfBuffer = object.Body;
 
-        const imagesBufferArr = await convertExhibitFiles(pdfBuffer,exhibitDirectoryName);
+        const imagesBufferArrPromise = convertExhibitFiles(pdfBuffer,exhibitDirectoryName);
+
+        const chunkProcessingPromises = textractPdfFile(pdfBuffer, maxPagesPerChunk, s3FilePath, metaData);
+
+        const [chunkProcessing, imagesBufferArr] = await Promise.all([chunkProcessingPromises, imagesBufferArrPromise]);
+        let combinedTextractResults = chunkProcessing.map(chunk => chunk.textractResult).flat();
+
+        combinedTextractResults = combinedTextractResults.map((v, k) => {
+            return { pageNumber: v.pageNumber + k, text: v.text }
+        })
+
 
         if (imagesBufferArr.exceededPageLimit) {
             console.log(`Skipped conversion for PDF with ${imagesBufferArr.pageCount} pages`);
@@ -270,7 +404,8 @@ async function pageNumber(s3FilePath, exhibitDirectoryName, fileIndex) {
             return {
                 awsExhibitPaths: [],
                 providerName: metaData?.providername,
-                medicalType: metaData?.medicaltype
+                medicalType: metaData?.medicaltype,
+                combinedTextractResults
             };
 
         } else {
@@ -284,7 +419,8 @@ async function pageNumber(s3FilePath, exhibitDirectoryName, fileIndex) {
             return {
                 awsExhibitPaths: uploadResults,
                 providerName: metaData?.providername,
-                medicalType: metaData?.medicaltype
+                medicalType: metaData?.medicaltype,
+                combinedTextractResults
             };
 
         }
@@ -294,18 +430,91 @@ async function pageNumber(s3FilePath, exhibitDirectoryName, fileIndex) {
         console.error('Error processing PDF:', error);
         throw error;
     }
+
+    async function textractPdfFile(pdfBuffer, maxPagesPerChunk, s3FilePath, metaData) {
+
+        const pageCount = await robustCountPdfPages(pdfBuffer);
+        const chunkProcessingPromises = [];
+        if (pageCount > maxPagesPerChunk) {
+            const numChunks = Math.ceil(pageCount / maxPagesPerChunk);
+
+            for (let chunkIndex = 0; chunkIndex < numChunks; chunkIndex++) {
+                const fromPageNumber = chunkIndex * maxPagesPerChunk + 1;
+                const toPageNumber = Math.min((chunkIndex + 1) * maxPagesPerChunk, pageCount);
+                const processChunk = async () => {
+                    try {
+
+                        const chunkBuffer = await splitPdf({
+                            pdfBuffer,
+                            fromPageNumber,
+                            toPageNumber
+                        });
+
+                        const chunkKey = s3FilePath.replace(/(\.[a-zA-Z0-9]+)$/, `-pages-${fromPageNumber}-${toPageNumber}$1`);
+
+                        await s3Client.putObject({
+                            Bucket: process.env.AWS_S3_BUCKET,
+                            Key: chunkKey,
+                            Body: chunkBuffer,
+                            Metadata: metaData,
+                        }).promise();
+
+                        const jobID = await startTextractJob(textractClient, chunkKey);
+
+                        await isTextractJobComplete(textractClient, jobID);
+
+                        const chunkTextractResult = await getTextractJobResults(textractClient, jobID);
+
+                        // Clean up the temporary chunk file
+                        console.log(`Cleaning up temporary chunk file: ${chunkKey}`);
+                        await s3Client.deleteObject({
+                            Bucket: process.env.AWS_S3_BUCKET,
+                            Key: chunkKey
+                        }).promise();
+
+                        // Return the Textract results with page information
+                        return {
+                            pageCount,
+                            pageRange: { from: fromPageNumber, to: toPageNumber },
+                            textractResult: chunkTextractResult
+                        };
+                    } catch (error) {
+                        console.error(`Error processing chunk ${chunkIndex + 1}:`, error);
+                        throw error;
+                    }
+                };
+
+                chunkProcessingPromises.push(processChunk());
+            }
+        } else {
+            const textractProcessing = async () => {
+                const jobID = await startTextractJob(textractClient, s3FilePath);
+
+                await isTextractJobComplete(textractClient, jobID);
+
+                const chunkTextractResult = await getTextractJobResults(textractClient, jobID);
+
+                return {
+                    pageCount,
+                    pageRange: { from: 1, to: pageCount },
+                    textractResult: chunkTextractResult
+                };
+            };
+
+            chunkProcessingPromises.push(textractProcessing());
+        }
+
+        return Promise.all(chunkProcessingPromises);
+    }
 }
 
 
 const policeReportPDF = async (s3FilePath, liability, exhibitDirectoryName, caseId, domainName, fileIndex) => {
     try {
-        const [jobID, { awsExhibitPaths }] = await Promise.all([
-            startTextractJob(textractClient, s3FilePath),
+        const [{ awsExhibitPaths, combinedTextractResults: data }] = await Promise.all([
             pageNumber(s3FilePath, exhibitDirectoryName, fileIndex)
         ]);
 
-        await isTextractJobComplete(textractClient, jobID);
-        const data = await getTextractJobResults(textractClient, jobID);
 
         let imageTextValue = '';
         for (let i = 0; i < data.length; i++) {
@@ -345,30 +554,6 @@ const startTextractJob = (client, objectName, pramsObj, awsServiceName = "startD
         const data = await client[awsServiceName](params).promise();
         return data.JobId;
     });
-};
-
-const isTextractJobComplete = async (client, jobId, awsServiceName = "getDocumentTextDetection") => {
-    const checkStatus = async () => {
-        const params = { JobId: jobId };
-        const response = await client[awsServiceName](params).promise();
-        return response.JobStatus;
-    };
-
-    while (true) {
-        await sleep(1000); // Base polling interval
-
-        try {
-            const status = await retryWithExponentialBackoff(async () => await checkStatus());
-            console.log(`Job status: ${status}`);
-
-            if (status !== "IN_PROGRESS") {
-                return status;
-            }
-        } catch (err) {
-            console.error("Error checking job status:", err);
-            throw err;
-        }
-    }
 };
 
 const getTextractJobResults = async (client, jobId, awsServiceName = "getDocumentTextDetection") => {
@@ -411,15 +596,11 @@ const getTextractJobResults = async (client, jobId, awsServiceName = "getDocumen
 const convertPDFToImages = async (s3FilePath, liability, exhibitDirectoryName, caseId, domainName, fileIndex) => {
     try {
         // Start both operations in parallel
-        const [jobID, processedFiles] = await Promise.all([
-            startTextractJob(textractClient, s3FilePath),
+        const [processedFiles] = await Promise.all([
             pageNumber(s3FilePath, exhibitDirectoryName, fileIndex)
         ]);
 
-        const { awsExhibitPaths, providerName, medicalType } = processedFiles;
-
-        await isTextractJobComplete(textractClient, jobID);
-        const data = (await getTextractJobResults(textractClient, jobID)).flat();
+        const { awsExhibitPaths, providerName, medicalType, combinedTextractResults: data } = processedFiles;
 
         const imageTextValue = await Promise.all(
             data.map(async (item) => {
@@ -524,11 +705,8 @@ const filterPersonalInfo = async (subjective, liability) => {
 
 const getTextAndExhibit = async (s3FilePath, liability, exhibitDirectoryName, caseId, domainName) => {
     try {
-        const jobID = await startTextractJob(textractClient, s3FilePath);
-        const { awsExhibitPaths } = await pageNumber(s3FilePath, exhibitDirectoryName);
+        const { awsExhibitPaths, combinedTextractResults: data } = await pageNumber(s3FilePath, exhibitDirectoryName);
 
-        await isTextractJobComplete(textractClient, jobID)
-        const data = await getTextractJobResults(textractClient, jobID)
 
         let imageTextValue = '';
         for (let i = 0; i < data.length; i++) {
@@ -566,5 +744,9 @@ const getTextAndExhibit = async (s3FilePath, liability, exhibitDirectoryName, ca
 module.exports = {
     policeReportPDF,
     convertPDFToImages,
-    getTextAndExhibit
+    getTextAndExhibit,
+    splitPdf,
+    robustCountPdfPages,
+    isTextractJobComplete,
+    pageNumber
 };

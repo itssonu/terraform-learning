@@ -26,7 +26,7 @@ class CaseController extends BaseController {
             }
 
             const cases = await Case.find(query)
-                .sort({ createdOn: -1 })
+                .sort({ updatedOn: -1 })
                 .skip(skip)
                 .limit(limit)
                 .select({
@@ -39,7 +39,8 @@ class CaseController extends BaseController {
                     isCaseGeneratedSccessfuly: 1,
                     isCaseNeedtoShow: 1,
                     isDraftCase: 1,
-                    isCaseEdited: 1
+                    isCaseEdited: 1,
+                    updatedOn: 1
                 });
     
             // Map the results to use the new location if available, otherwise use the old location

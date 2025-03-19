@@ -17,3 +17,23 @@ export const fontFamilyOptions = [
   { key: "monospace", value: "monospace", text: "Monospace" },
   { key: "arial", value: "arial", text: "Arial" }
 ]
+
+export const fontSizeOptions = [
+  { key: "8px", value: "8", text: "8px" },
+  { key: "10px", value: "10", text: "10px" },
+  { key: "12px", value: "12", text: "12px" },
+  { key: "14px", value: "14", text: "14px" },
+  { key: "16px", value: "16", text: "16px" },
+  { key: "18px", value: "18", text: "18px" },
+  { key: "20px", value: "20", text: "20px" },
+  { key: "24px", value: "24", text: "24px" },
+  { key: "28px", value: "28", text: "28px" },
+  { key: "32px", value: "32", text: "32px" }
+];
+
+export const textAlignOptions = [
+  { key: "left", value: "LEFT", text: "Left" },
+  { key: "center", value: "CENTER", text: "Center" },
+  { key: "right", value: "RIGHT", text: "Right" },
+  { key: "justified", value: "JUSTIFIED", text: "Justified" }
+];

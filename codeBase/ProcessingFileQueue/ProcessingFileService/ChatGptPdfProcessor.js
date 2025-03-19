@@ -160,7 +160,7 @@ const processAi = async ({content, jsonValidator = null, model_temperature = 0, 
                     console.log("Failed JSON data:", data);
                     jsonfailed = true;
                     previouscontent = data;
-                    await sleep(delay * Math.pow(attempt, 2));
+                    await sleep(delay * Math.pow(attempt, 2) + Math.random()*5);
                     continue;
                 }
             }
@@ -184,9 +184,9 @@ const processAi = async ({content, jsonValidator = null, model_temperature = 0, 
             if (isRateLimit) {
                 console.log("Rate limit detected, waiting before retry without incrementing attempt count");
                 rateLimitRetries++;
-                await sleep(rateLimitDelay * Math.pow(rateLimitRetries, 2));
+                await sleep(rateLimitDelay * Math.random() * Math.pow(rateLimitRetries, 2));
             } else {
-                await sleep(delay * Math.pow(attempt, 2));
+                await sleep(delay * Math.random() * Math.pow(attempt, 2));
             }
         }
     }

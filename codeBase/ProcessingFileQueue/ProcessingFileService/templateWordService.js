@@ -43,6 +43,9 @@ const createAndSaveTemplateReportWord = async (
         priorMedicalRecordsDetailsDoc,
         executiveSummaryDoc,
         llmLibilityDescriptionDoc,
+        LLMFactsOfIncident,
+        LLMDangerousCondition,
+        LLMACNotice,
         selectedAccidentFilesDoc,
         propertyDamageHyperlinkSentenceDoc,
         policeReportExhibitSectionDoc,
@@ -63,6 +66,7 @@ const createAndSaveTemplateReportWord = async (
         HourlyWorkingRate,
         his_her,
         he_she,
+        He_She,
         him_her,
         age,
         lossofIncomeCalculatedAmount,
@@ -110,6 +114,7 @@ const createAndSaveTemplateReportWord = async (
     monthsDifference = monthsDifference || '0'
     his_her = his_her || ''
     he_she = he_she || ''
+    He_She = He_She || ''
     him_her = him_her || ''
     MissedWorkHours = MissedWorkHours || '0'
     lossofIncomeCalculatedAmount = lossofIncomeCalculatedAmount || '0'
@@ -581,6 +586,11 @@ const createAndSaveTemplateReportWord = async (
                     children: [new TextRun({ text: `${he_she}` })],
                 },
 
+                He_She: {
+                    type: PatchType.PARAGRAPH,
+                    children: [new TextRun({ text: `${He_She}` })],
+                },
+
                 him_her: {
                     type: PatchType.PARAGRAPH,
                     children: [new TextRun({ text: `${him_her}` })],
@@ -752,18 +762,31 @@ const createAndSaveTemplateReportWord = async (
                 },
 
                 priorMedicalRecordsDetails: {
-                    type: PatchType.PARAGRAPH,
-                    children: preMedicalParagraphs || []
+                    type: PatchType.DOCUMENT,
+                    children: priorMedicalRecordsDetailsDoc || []
                 },
 
                 medicalRecordsDetails: {
-                    type: PatchType.PARAGRAPH,
-                    children: medicalParagraphs || []
+                    type: PatchType.DOCUMENT,
+                    children: medicalRecordsDetailsDoc || []
                 },
 
                 LLMLiabilityDescription: {
+                    type: PatchType.DOCUMENT,
+                   children: llmLibilityDescriptionDoc || []
+                },
+
+                LLMFactsOfIncident: {
                     type: PatchType.PARAGRAPH,
-                   children: llmLibilityDescriptionDoc ? [new TextRun({ text: "\t" }), new TextRun({ text: llmLibilityDescriptionDoc })] : []
+                    children: LLMFactsOfIncident ? [new TextRun({ text: "\t" }), new TextRun({ text: LLMFactsOfIncident })] : [],
+                },
+                LLMDangerousCondition: {
+                    type: PatchType.PARAGRAPH,
+                    children: LLMDangerousCondition ? [new TextRun({ text: LLMDangerousCondition })] : [],
+                },
+                LLMACNotice: {
+                    type: PatchType.PARAGRAPH,
+                    children: LLMACNotice ? [new TextRun({ text: LLMACNotice })] : [],
                 },
 
                 propertyDamageHyperlinkSentence: {
@@ -842,19 +865,8 @@ const createAndSaveTemplateReportWord = async (
                 },
 
                 painAndSuffering: {
-                    type: PatchType.PARAGRAPH,
-                    children: llmPainAndSufferingDoc.filter(x => x.length)
-                    .flatMap((value, index, array) => {
-                        const textRun = new TextRun({
-                            text: value,
-                        });
-                        
-                        // If not the last paragraph, add a line break
-                        if (index < array.length - 1) {
-                            return [new TextRun({ text: "\t" }), textRun, new TextRun({ text: "\t" }), new TextRun({ break: 2 })];
-                        }
-                        return [new TextRun({ text: "\t" }), textRun, new TextRun({ text: "\t" })];
-                    }) || []
+                    type: PatchType.DOCUMENT,
+                    children: llmPainAndSufferingDoc || []
                 },
 
                 medicalSpecialsTable: {
@@ -929,7 +941,7 @@ const createAndSaveTemplateReportWord = async (
                 medicalRecordLinkSentence: {
                     type: PatchType.PARAGRAPH,
                     children: medicalHyperlinkNumber > 0 && caseMedicalRecordsParagraphs?.length > 0 ? [
-                        new TextRun('Copies of medical records are attached as '),
+                        new TextRun('Copies of medical records and bills are attached as '),
                         new InternalHyperlink({
                             children: [
                                 new TextRun({

@@ -38,3 +38,7 @@ aws s3 sync ./build/ s3://$S3_BUCKET
 
 echo "Invalidating CloudFront cache..."
 INVALIDATION_ID=$(aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --paths "/*" --query 'Invalidation.Id' --output text)
+
+cd ../../env/$ENV
+terraform output
+

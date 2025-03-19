@@ -68,7 +68,7 @@ const getMedicalBillAmountWithMedicalProviderName = async (content, updatedCompl
         const currentProviderTreatmentSummaryText = medicalBillPrompt.replace("CHUNKED_FILE_TEXT", chunkedText);
         try {
             const response = await processAi({content: currentProviderTreatmentSummaryText, jsonValidator: true, thinking: true});
-            console.log(`Processed chunk ${index}`);
+            console.log(`Processed chunk ${index} for Bills`);
             
             if (response) {
                 try {

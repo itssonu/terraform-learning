@@ -56,16 +56,6 @@ app.options('*', cors())
 app.use(express.json());
 app.use(require('./src/routes'));
 
-app.get('/sonu', async (req, res) => {
-    try {
-        
-        return res.send({message: "success sonu"});
-    } catch (err) {
-        console.log(err)
-    }
-})
-
-
 app.post('/generate-presigned-urls', verifyToken, async (req, res) => {
     const domainName = req.domainName[0];
     const { preSignedObj } = req.body;

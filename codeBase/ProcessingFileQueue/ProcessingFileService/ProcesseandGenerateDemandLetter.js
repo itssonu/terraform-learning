@@ -13,7 +13,7 @@ const CompaniesSchema = require('../src/db/models/Companies');
 const { DEMAND_TYPE, CASE_TYPE, CASE_TYPE_DEMANDS, DEMAND } = require('../src/utils/enum');
 const createMedicalChronology = require('./medicalChronology');
 
-const processeandGenerateDemandLetter = async (liability, injury, damage, caseModel, policeReportSummary, painAndSuffering, socketService, caseId, userId, domainName, findCaseModel) => {
+const processeandGenerateDemandLetter = async (liability, injury, damage, caseModel, policeReportSummary, painAndSuffering, socketService, caseId, userId, domainName, findCaseModel, isEditedCase) => {
     try {
         console.log("Creating Demand Letter for Case:", caseId)
         let liabilityAnalysisResponse = "";
@@ -95,38 +95,41 @@ const processeandGenerateDemandLetter = async (liability, injury, damage, caseMo
 
         await Promise.all(demandArr)
 
-        const DbConnect = mongoose.connection.useDb(domainName);
-        const caseDbModel = DbConnect.model("cases", CaseSchema);
-        const caseInfo = await caseDbModel.findById(caseModel?._id).select("s3UniqueId userId").lean();
+        if (!isEditedCase) {
 
-        const userDbModel = DbConnect.model("users", UserSchema);
-        const userData = await userDbModel.findById(caseInfo.userId).lean();
-        const masterDbConnect = mongoose.connection.useDb('master');
-        const companyDbModel = masterDbConnect.model("Companies", CompaniesSchema);
-        const companyData = await companyDbModel.findOne({ domainName: userData?.domainName });
+            const DbConnect = mongoose.connection.useDb(domainName);
+            const caseDbModel = DbConnect.model("cases", CaseSchema);
+            const caseInfo = await caseDbModel.findById(caseModel?._id).select("s3UniqueId userId").lean();
+
+            const userDbModel = DbConnect.model("users", UserSchema);
+            const userData = await userDbModel.findById(caseInfo.userId).lean();
+            const masterDbConnect = mongoose.connection.useDb('master');
+            const companyDbModel = masterDbConnect.model("Companies", CompaniesSchema);
+            const companyData = await companyDbModel.findOne({ domainName: userData?.domainName });
 
 
 
-        const hasMonthlySubscription = companyData?.subscription?.demandsPerMonth > 0;
-        const hasRemainingDemands = companyData?.subscription?.remainingDemand > 0;
+            const hasMonthlySubscription = companyData?.subscription?.demandsPerMonth > 0;
+            const hasRemainingDemands = companyData?.subscription?.remainingDemand > 0;
 
-        let demandPrice = (hasMonthlySubscription && hasRemainingDemands)
-            ? companyData?.subscription?.monthlyPrice / companyData?.subscription?.demandsPerMonth
-            : companyData?.subscription?.costPerAdditionalDemand;
-        let address = companyData?.companyAddress
-        let companyName = companyData?.companyName
+            let demandPrice = (hasMonthlySubscription && hasRemainingDemands)
+                ? companyData?.subscription?.monthlyPrice / companyData?.subscription?.demandsPerMonth
+                : companyData?.subscription?.costPerAdditionalDemand;
+            let address = companyData?.companyAddress
+            let companyName = companyData?.companyName
 
-        const pdfPath = await InvoiceService(userId, caseModel?._id, liability.caseName, caseModel.createdOn, caseInfo?.s3UniqueId, demandPrice, domainName, companyName, address)
+            const pdfPath = await InvoiceService(userId, caseModel?._id, liability.caseName, caseModel.createdOn, caseInfo?.s3UniqueId, demandPrice, domainName, companyName, address)
 
-        await caseDbModel.findOneAndUpdate({ _id: caseModel?._id }, { invoiceFilePath: pdfPath }).lean();
-        const mail = companyData?.accountantemail;
-        let sendInvoiceMailRes = await sendInvoiceMail(mail, pdfPath);
-        await socketService.invoiceMailRes(userId,
-            {
-                success: Boolean(sendInvoiceMailRes),
-                email: mail,
-            }
-        );
+            await caseDbModel.findOneAndUpdate({ _id: caseModel?._id }, { invoiceFilePath: pdfPath }).lean();
+            const mail = companyData?.accountantemail;
+            let sendInvoiceMailRes = await sendInvoiceMail(mail, pdfPath);
+            await socketService.invoiceMailRes(userId,
+                {
+                    success: Boolean(sendInvoiceMailRes),
+                    email: mail,
+                }
+            );
+        }
 
         return true
     } catch (e) {

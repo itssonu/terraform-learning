@@ -806,7 +806,7 @@ const Cases = () => {
                               <TableHead sx={{ backgroundColor: "#f8f9fc", }}>
                                  <TableRow>
                                     <TableCell sx={{ fontWeight: 600, padding: "10px 15px", width: '20%' }}>Title</TableCell>
-                                    <TableCell sx={{ fontWeight: 600, padding: "10px 15px", width: '15%' }}>Case Added</TableCell>
+                                    <TableCell sx={{ fontWeight: 600, padding: "10px 15px", width: '15%' }}>Updated On</TableCell>
                                     <TableCell sx={{ fontWeight: 600, padding: "10px 15px", width: "35%" }}>Status</TableCell>
                                     <TableCell sx={{ fontWeight: 600, padding: "10px 15px", width: "20%" }}>Download</TableCell>
                                     <TableCell sx={{ fontWeight: 600, padding: "10px 0px", width: "5%" }}>Edit</TableCell>
@@ -876,11 +876,19 @@ const Cases = () => {
                                                          {moment(x?.createdOn).format("YYYY-MM-DD HH:mm:ss")}
                                                       </span>
                                                    </div>
+                                                   <div className="d-flex align-center">
+                                                      <span className="case-popover-Key">
+                                                         Latest Update: &nbsp;
+                                                      </span>
+                                                      <span className="case-popover-value">
+                                                         {moment(x?.updatedOn).format("YYYY-MM-DD HH:mm:ss")}
+                                                      </span>
+                                                   </div>
                                                 </Box>
                                              </Popover>
                                           </RenderIf>
 
-                                          <TableCell>{ParseAndFormatUtcDateTime(x.createdOn)}</TableCell>
+                                          <TableCell>{ParseAndFormatUtcDateTime(x.updatedOn)}</TableCell>
                                           <TableCell>
                                              {x?.isDraftCase ?
                                                 <Box>

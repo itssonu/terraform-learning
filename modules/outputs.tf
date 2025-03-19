@@ -11,5 +11,5 @@ output "cloudfront_domain_name" {
   value = aws_cloudfront_distribution.www.domain_name
 }
 output "api_base_url" {
-  value = aws_api_gateway_deployment.api.invoke_url
+  value = aws_lambda_function_url.api.function_url
 }

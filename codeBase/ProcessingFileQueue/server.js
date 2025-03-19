@@ -9,6 +9,7 @@ const { policeReportChatGptProcessor } = require('./ProcessingFileService/Proces
 const { processmedicalBillChatGptProcessor } = require('./ProcessingFileService/ProcessMedicalBillChatGptService');
 const { saveChatGptData } = require('./ProcessingFileService/SaveChatGptResponse');
 const { processeandGenerateDemandLetter } = require('./ProcessingFileService/ProcesseandGenerateDemandLetter');
+const { getSummary } = require('./ProcessingFileService/executiveSummary')
 const { generateMedicalTreatment, generatePreMedicalTreatment } = require('./ProcessingFileService/keyMedicalTreatmentSummary');
 const { processandGenerateMedicalRecordsChatGptService, testFunction } = require('./ProcessingFileService/ProcessandGenerateMedicalRecordsChatGptService');
 const socketHandlerModule = require('./ProcessingFileService/ProcessSocketService')
@@ -257,7 +258,7 @@ const eventAgenda = async (job, domainName) => {
             await socketService.medicalRecordsProgress("Successful", caseModel?._id, userId, domainName);
             await socketService.preMedicalRecordsProgress("Successful", caseModel?._id, userId, domainName);
 
-            await generateDemand(caseModel, liability, medicalProviders, damage, userId, domainName);
+            await generateDemand(caseModel, liability, medicalProviders, damage, userId, domainName, isEditedCase);
 
             //deducting cases from subscription plan of the company
             if (!isEditedCase) {
@@ -464,6 +465,8 @@ const processMedicalFile = async (arrayMedicalFiles, caseModel, userId, liabilit
         caseLoadingCalc.timerCalc.medicalRecords.totalFiles = arrayMedicalFiles.length;
         const { extractedPdfTextArray: processMedicalFileextractedPdfText, providerNames: medicalProviderNames, medicalTypes: medicalType } = await getFileTextAndImage(arrayMedicalFiles, caseModel?._id, userId, socketService, "medicalRecordsProgress", liability, domainName, "medicalRecordsExhibitDirectoryPath");
 
+        console.log("Done with text extraction and image processing")
+
         // Consolidate texts by provider
         const providerTextMap = new Map();
         processMedicalFileextractedPdfText.forEach((text, index) => {
@@ -492,9 +495,13 @@ const processMedicalFile = async (arrayMedicalFiles, caseModel, userId, liabilit
             consolidatedTypes.push(value.type);
         });
 
+        console.log("Text consolidated per provider")
+
         const medicalVisitsDatesPromise = consolidatedTexts.map(async (text) => {
             return await getVisitDatesFromMedicalRecords(text)
         })
+
+        console.log("Visit Dates extracted")
 
         // Process all providers in parallel
         let providerPromises = consolidatedTexts.map(async (text, index) => {
@@ -550,11 +557,16 @@ const processMedicalFile = async (arrayMedicalFiles, caseModel, userId, liabilit
         await saveChatGptData({ medicalRecords: [mergedProviders] }, caseModel, domainName);
         
         // Generate medical treatment paragraphs
-        const keyMedicalTreatmentParagraphs = mergedProviders.length > 0 
+        const {keyMedicalTreatmentParagraphs, simplifiedTreatmentParagraphs} = mergedProviders.length > 0 
             ? await generateMedicalTreatment(caseModel?._id, domainName, consolidatedTexts) 
             : "";
+
+        let processedExecutiveSummary = mergedProviders?.length > 0 ? await getSummary({ medicalRecords: [mergedProviders], userData: caseModel?.detailsInput }) : "No records found";
+
         
         await saveChatGptData({ medicalRecordsParagraphs: keyMedicalTreatmentParagraphs }, caseModel, domainName);
+        await saveChatGptData({ simplifiedTreatmentParagraphs: simplifiedTreatmentParagraphs }, caseModel, domainName);
+        await saveChatGptData({ executiveSummary: processedExecutiveSummary }, caseModel, domainName);
         await socketService.medicalRecordsProgress("Successful", caseModel?._id, userId, domainName);
 
         caseLoadingCalc.stopLoading("medicalRecords");
@@ -756,13 +768,13 @@ const removeDuplicateDates = (data) => {
     return result;
 };
 
-const generateDemand = async (caseModel, liability, injury, damage, userId, domainName) => {
+const generateDemand = async (caseModel, liability, injury, damage, userId, domainName, isEditedCase) => {
     const caseLoadingCalc = getLocalStorevalue(localStoreObj.caseLoadingObj);
     caseLoadingCalc.demandLetterLoading()
     const db = mongoose.connection.useDb(domainName);
     const CaseModal = db.model("cases", CaseSchema);
     const findcaseModel = await CaseModal.findById(caseModel._id);
-    const isDemandDraftGenerated = await processeandGenerateDemandLetter(liability, injury, damage, caseModel, findcaseModel?.result?.policeReportChatGptResponse, findcaseModel?.detailsInput?.painAndSuffering, socketService, caseModel?._id, userId, domainName, findcaseModel);
+    const isDemandDraftGenerated = await processeandGenerateDemandLetter(liability, injury, damage, caseModel, findcaseModel?.result?.policeReportChatGptResponse, findcaseModel?.detailsInput?.painAndSuffering, socketService, caseModel?._id, userId, domainName, findcaseModel, isEditedCase);
     if (isDemandDraftGenerated) {
         await socketService.completionDemandLetter('Successful', caseModel?._id, userId, domainName);
         caseLoadingCalc.stopLoading("demandLetter");

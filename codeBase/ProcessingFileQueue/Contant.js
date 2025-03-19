@@ -1,4 +1,6 @@
 const Constants = {
+    // gsPath: 'C:\\Program Files\\gs\\gs10.03.1\\bin\\gswin64c.exe',
+    gsPath: 'gs',
     localStoreObj :{
       caseLoadingObj : "caseLoadingCalc",  
     },

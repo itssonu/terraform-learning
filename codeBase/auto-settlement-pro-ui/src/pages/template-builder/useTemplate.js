@@ -325,6 +325,64 @@ const useTemplate = () => {
         addUpdateCommonTemplate(payload)
     }
 
+    const onChangeFontSize = (e) => {
+        e.preventDefault();
+        const value = e.target.value
+        setFontFamily(value);
+        const payload = { fontSize: value }
+        addUpdateCommonTemplate(payload)
+    }
+
+    const onChangeTextAlign = (e) => {
+        e.preventDefault();
+        const value = e.target.value
+        setFontFamily(value);
+        const payload = { textAlign: value }
+        addUpdateCommonTemplate(payload)
+    }
+
+    const onChangeIsBold = (e) => {
+        e.preventDefault();
+        const value = e.target.checked
+        const payload = { 'isBold': value }
+        addUpdateCommonTemplate(payload)
+    }
+
+    const onChangeIsItalic = (e) => {
+        e.preventDefault();
+        const value = e.target.checked
+        const payload = { 'isItalic': value }
+        addUpdateCommonTemplate(payload)
+    }
+
+    const onChangeParagraphSpacingBefore = (e) => {
+        e.preventDefault();
+        const value = e.target.value
+        const payload = { 'paragraphSpacingBefore': value }
+        addUpdateCommonTemplate(payload)
+    }
+
+    const onChangeParagraphSpacingAfter = (e) => {
+        e.preventDefault();
+        const value = e.target.value
+        const payload = { 'paragraphSpacingAfter': value }
+        addUpdateCommonTemplate(payload)
+    }
+
+    const onChangeBulletSpacingBefore = (e) => {
+        e.preventDefault();
+        const value = e.target.value
+        const payload = { 'bulletSpacingBefore': value }
+        addUpdateCommonTemplate(payload)
+    }
+
+    const onChangeBulletSpacingAfter = (e) => {
+        e.preventDefault();
+        const value = e.target.value
+        const payload = { 'bulletSpacingAfter': value }
+        addUpdateCommonTemplate(payload)
+    }
+
     const viewFileInNewTab = async (file) => {
         if (file instanceof File || file instanceof Blob) {
             const fileUrl = URL.createObjectURL(file);
@@ -429,6 +487,14 @@ const useTemplate = () => {
         backToTemplateList,
         deleteTemplate,
         getPages,
+        onChangeFontSize,
+        onChangeTextAlign,
+        onChangeIsBold,
+        onChangeIsItalic,
+        onChangeParagraphSpacingBefore,
+        onChangeParagraphSpacingAfter,
+        onChangeBulletSpacingBefore,
+        onChangeBulletSpacingAfter
     };
 };
 

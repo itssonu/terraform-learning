@@ -32,6 +32,8 @@ resource "aws_lambda_function" "api" {
   role          = aws_iam_role.iam_for_lambda.arn
   image_uri = "${aws_ecr_repository.api.repository_url}:latest"
   package_type = "Image"
+  timeout       = 30
+  memory_size   = 1024
   vpc_config {
     subnet_ids = module.vpc.private_subnets
     security_group_ids = [aws_security_group.allow-in.id]
@@ -42,14 +44,7 @@ resource "aws_lambda_function" "api" {
     }
   }
 
+  architectures = ["arm64"]
+
   depends_on = [ aws_security_group.allow-in, aws_iam_role.iam_for_lambda, aws_ecr_repository.api ]
-}
-
-resource "aws_lambda_permission" "api" {
-  statement_id  = "AllowAPIGatewayInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = "${aws_lambda_function.api.function_name}"
-  principal     = "apigateway.amazonaws.com"
-
-  source_arn = "${aws_api_gateway_rest_api.api.execution_arn}/*/*"
 }

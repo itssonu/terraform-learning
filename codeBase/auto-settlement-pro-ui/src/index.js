@@ -7,8 +7,6 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import store from "./redux/store";
 const root = ReactDOM.createRoot(document.getElementById('root'));
-console.log('env variable react app - ', process.env);
-
 root.render(
   <React.StrictMode>
     <Provider store={store}>

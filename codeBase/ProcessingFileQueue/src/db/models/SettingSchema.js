@@ -28,6 +28,31 @@ const SettingSchema = new mongoose.Schema({
         fontFamily: {
             type: String
         },
+        fontSize: {
+            type: Number
+        },
+        isBold: {
+            type: Boolean
+        },
+        isItalic: {
+            type: Boolean
+        },
+        paragraphSpacingBefore: {
+            type: Number,
+            default: 120
+        },
+        paragraphSpacingAfter: {
+            type: Number,
+            default: 120
+        },
+        bulletSpacingBefore: {
+            type: Number,
+            default: 10
+        },
+        bulletSpacingAfter: {
+            type: Number,
+            default: 10
+        },
     },
 
     isDefault: {

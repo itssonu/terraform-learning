@@ -59,7 +59,9 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
         const medicalRecords = caseData?.result?.medicalRecords || [];
         const medicalBillRecords = caseData?.result?.medicalBillRecords || [];
         const caseMedicalRecordsParagraphs = caseData?.result?.medicalRecordsParagraphs || "";
+        const caseSimplifiedMedicalRecordsParagraphs = caseData?.result?.simplifiedTreatmentParagraphs || "";
         const casePreMedicalRecordsParagraphs = caseData?.result?.preMedicalRecordsParagraphs || "";
+        const caseExecutiveSummary = caseData?.result?.executiveSummary || "";
         const accidenPhoto = caseData?.result?.accidentPhotoRecords || [];
         const uiSelectedAccidentFiles = caseData?.result?.selectedAccidentFiles || [];
         const bodyInjuryFiles = caseData?.result?.bodyInjuryFiles || [];
@@ -139,9 +141,17 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
         let hyperlinkCounter = 0;
         const checkcompanyLogo = settingTemplate?.companyLogo;
         const fontName = settingTemplate?.fontFamily || 'Times New Roman';
+        const fontSize = (settingTemplate?.fontSize || 12) * 2;
+        const textAlign = settingTemplate?.textAlign || "JUSTIFIED";
+        const isBold = settingTemplate?.isBold || false;
+        const isItalic = settingTemplate?.isItalic || false;
+        const paragraphSpacingBefore = settingTemplate?.paragraphSpacingBefore || 120;
+        const paragraphSpacingAfter = settingTemplate?.paragraphSpacingAfter || 120;
+        const bulletSpacingBefore = settingTemplate?.bulletSpacingBefore || 10;
+        const bulletSpacingAfter = settingTemplate?.bulletSpacingAfter || 10;
         let billedAmountHeading = settingTemplate?.billedAmountHeading || false;
         //console.log("Mediucal records are: ", medicalRecords)
-        let processedExecutiveSummary = caseMedicalRecordsParagraphs?.length > 0 ? await getSummary({ medicalRecords, userData }) : "No records found";
+        let processedExecutiveSummary = caseExecutiveSummary?.length > 0 ? caseExecutiveSummary : "No records found";
 
         let dollarSign = aggregatedMedicalBills?.map((values, index) =>
             new Paragraph({
@@ -369,7 +379,7 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                         children: [
                             new ImageRun({
                                 data: values,
-                                transformation: { width: 650, height: 700 },
+                                transformation: { width: 585, height: 630 },
                             })
                         ]
                     })
@@ -601,6 +611,7 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                     "[perDayAmountForFutureNonEconomicDamages]": perDayAmountForFutureNonEconomicDamages,
                     "[his/her]": gender === "Male" ? "his" : "her",
                     "[he/she]": gender === "Male" ? "he" : "she",
+                    "[He/She]": gender === "Male" ? "He" : "She",
                     "[him/her]": gender === "Male" ? "him" : "her",
                     "[postNonEconomicsDamagesFinalAmount]": `$` + postNonEconomicsDamagesFinalAmount,
                     "[perDayPasNonEconomicDamagesFinalAmount]": `$` + perDayPasNonEconomicDamagesFinalAmount,
@@ -712,13 +723,7 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
             }
 
 
-            const getProcessedMedicalRecords = async (key) => {
-                let values = ""
-                if (key) {
-                    values = casePreMedicalRecordsParagraphs
-                } else {
-                    values = caseMedicalRecordsParagraphs
-                }
+            const getProcessedMedicalRecords = async (values) => {
 
                 let paragraphs = [""]
                 if (values) {
@@ -740,7 +745,7 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                                     text: "\t",
                                 }),
 
-                                new TextRun({ children: [text.substring(1).trim()], size: 24, font: fontName })
+                                new TextRun({ children: [text.substring(1).trim()], size: fontSize, font: fontName, bold: isBold, italics: isItalic })
                             ],
                             tabStops: [
                                 {
@@ -754,22 +759,22 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                             },
                             // numbering: { reference: "my-unique-bullet-points", level: 0 },
                             spacing: {
-                                before: 10,
-                                after: 10
+                                before: bulletSpacingBefore,
+                                after: bulletSpacingAfter
                             },
-                            alignment: AlignmentType.JUSTIFIED,
+                            alignment: AlignmentType[textAlign],
                         });
                     } else {
                         // Regular paragraph
                         return new Paragraph({
                             children: [
-                                new TextRun({ children: [new Tab(), text], size: 24, font: fontName })
+                                new TextRun({ children: [new Tab(), text], size: fontSize, font: fontName, bold: isBold, italics: isItalic })
                             ],
                             spacing: {
-                                before: 120,
-                                after: 120
+                                before: paragraphSpacingBefore,
+                                after: paragraphSpacingAfter
                             },
-                            alignment: AlignmentType.JUSTIFIED,
+                            alignment: AlignmentType[textAlign],
                         });
                     }
                 });
@@ -781,9 +786,11 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
             /////////////////////////////////////////////////////////////////////////////////////// Ends ////////////////////////////////////////////////////////////////////////////////////////////
 
             ////////////////////////////////////////////// Medical Records/Pre Medical Records Rendering Code Start from here/////////////////////////////////////////////////////////////////////////////////////
-            const preMedicalRecordsParagraphs = preMedicalRecords.length ? await getProcessedMedicalRecords(true) : []
+            const preMedicalRecordsParagraphs = preMedicalRecords.length ? await getProcessedMedicalRecords(casePreMedicalRecordsParagraphs) : []
 
-            const medicalRecordsParagraphs = medicalRecords.length ? await getProcessedMedicalRecords(false) : []
+            const medicalRecordsParagraphs = medicalRecords.length ? await getProcessedMedicalRecords(caseMedicalRecordsParagraphs) : []
+
+            const simplifiedMedicalRecordsParagraphs = medicalRecords.length ? await getProcessedMedicalRecords(caseSimplifiedMedicalRecordsParagraphs) : []
 
             ////////////////////////////////////////////////////////////////////////////////////// Ends ////////////////////////////////////////////////////////////////////////////////////
 
@@ -834,7 +841,7 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                     children: [
                         new ImageRun({
                             data: values,
-                            transformation: { width: 650, height: 700 },
+                            transformation: { width: 585, height: 630 },
                         })
                     ]
                 })
@@ -859,7 +866,7 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                         }),
                         new ImageRun({
                             data: values,
-                            transformation: { width: 650, height: 700, },
+                            transformation: { width: 585, height: 630, },
                         })
                     ]
                 })
@@ -882,7 +889,7 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                         }),
                         new ImageRun({
                             data: values,
-                            transformation: { width: 650, height: 700 },
+                            transformation: { width: 585, height: 630 },
                         })
                     ]
                 })
@@ -922,7 +929,7 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
             const preMedicalExhibitLink = new InternalHyperlink({
                 children: [
                     new TextRun({
-                        text: premMedicalRecordsExhibit ? `EXHIBIT ${hyperlinkCounter = hyperlinkCounter + 1}.` : "",
+                        text: premMedicalRecordsExhibit?.length ? `EXHIBIT ${hyperlinkCounter = hyperlinkCounter + 1}.` : "",
                         bold: true,
                         color: '0563C1',
                         size: 24,
@@ -967,7 +974,7 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
             const lossOfIncomeExhibitLink = new InternalHyperlink({
                 children: [
                     new TextRun({
-                        text: `EXHIBIT ${hyperlinkCounter = hyperlinkCounter + 1}.`,
+                        text: lossOfEarningsExhibitPaths?.length ? `EXHIBIT ${hyperlinkCounter = hyperlinkCounter + 1}.`: "",
                         bold: true,
                         color: '0563C1',
                         size: 24,
@@ -982,7 +989,7 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
             const futureExpenseExhibitLink = new InternalHyperlink({
                 children: [
                     new TextRun({
-                        text: `EXHIBIT ${hyperlinkCounter = hyperlinkCounter + 1}.`,
+                        text: medicalExpensesExhibitPaths?.length ? `EXHIBIT ${hyperlinkCounter = hyperlinkCounter + 1}.` : "",
                         bold: true,
                         color: '0563C1',
                         size: 24,
@@ -992,7 +999,8 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                 anchor: "medicalExpensesExhibitPathsId",
             })
 
-            let futureExpenseHyperlinkNumber = medicalExpensesExhibitPaths?.length > 0 ? hyperlinkCounter : -1
+            let futureExpenseHyperlinkNumber = medicalExpensesExhibitPaths?.length > 0 ? hyperlinkCounter : -1;
+
             ////////////////////////////////////////////////////////////////////////////////////// Ends /////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -1003,6 +1011,7 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
             gender = isMale ? "Male" : "Female"
             const his_her = isMale ? "his" : "her"
             const he_she = isMale ? "he" : "she"
+            const He_She = isMale ? "He" : "She"
             const him_her = isMale ? "him" : "her"
             const createdDate = moment(createDate).format('MMMM D, YYYY');
             const claimAmount = userData?.painAndSuffering?.monthlyamount.split('.')[0]
@@ -1217,11 +1226,14 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                 return (
 
                     new Paragraph({
-                        spacing: { after: 120 },
-                        alignment: AlignmentType.JUSTIFIED,
+                        spacing: { before: paragraphSpacingBefore, after: paragraphSpacingAfter },
+                        alignment: AlignmentType[textAlign],
                         children: [new TextRun({
                             children: [new Tab(), text],
-                            size: 24,
+                            size: fontSize,
+                            font: fontName,
+                            bold: isBold,
+                            italics: isItalic
                         })]
                     })
                 )
@@ -2679,14 +2691,17 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
             const llmLibilityDescriptionDoc = liability ? [
                 new Paragraph({
                     spacing: {
-                        after: 120,
-                        before: 120,
+                        after: paragraphSpacingAfter,
+                        before: paragraphSpacingBefore,
                     },
-                    alignment: AlignmentType.JUSTIFIED,
+                    alignment: AlignmentType[textAlign],
                     children: [
                         new TextRun({
                             children: [new Tab(), replaceVariablesWithValues(liability)],
-                            size: 24,
+                            size: fontSize,
+                            font: fontName,
+                            bold: isBold,
+                            italics: isItalic
                         })
                     ]
                 })
@@ -2731,7 +2746,7 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                 ]
             })] : [];
 
-            const policeReportExhibitSectionDoc = policeReportExhibit?.length ? [
+            let policeReportExhibitSectionDoc = policeReportExhibit?.length ? [
                 new Paragraph({
                     alignment: AlignmentType.CENTER,
                     children: [
@@ -2755,6 +2770,8 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                 }),
                 ...policeReportExhibit
             ] : []
+
+            let policeExhibitNumber = bookmarkCounter
 
             const acciedentFileExhibitSectionDoc = accidentFilesArr.length ? [
                 new Paragraph({
@@ -2794,7 +2811,7 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                                             bold: true,
                                             style: "Hyperlink"
                                         })],
-                                    anchor: "preMedicalRecordsExhibitAnchor",
+                                    anchor: "Exhibit2Id",
                                 })
                             ]
                         })
@@ -3273,6 +3290,34 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
 
             if (demandTemplate?.templateFile) {
                 try {
+                    if (caseType !== "AUTO_ACCIDENT") {
+                        policeReportExhibitSectionDoc = (expertReportExhibitDirectorys3Path?.length || incidentReportExhibitS3Path?.length || witnessReportExhibitS3Path?.length) ? [
+                            new Paragraph({
+                                alignment: AlignmentType.CENTER,
+                                children: [
+                                    new Bookmark({
+                                        id: "policeExhibitId",
+                                        children: [
+                                            new InternalHyperlink({
+                                                children: [
+                                                    new TextRun({
+                                                        children: [`EXHIBIT ${policeExhibitNumber}`],
+                                                        size: 104,
+                                                        bold: true,
+                                                        style: "Hyperlink"
+                                                    }),
+                                                ],
+                                                anchor: "Exhibit1Id",
+                                            })]
+                                    }),
+                                    new PageBreak()
+                                ],
+                            }),
+                            ...[...(expertReportExhibitDirectorys3Path?.length ? await getExhibitArr(expertReportExhibitDirectorys3Path) : []),
+                             ...(incidentReportExhibitS3Path?.length ? await getExhibitArr(incidentReportExhibitS3Path) : []),
+                             ...(witnessReportExhibitS3Path?.length ? await getExhibitArr(witnessReportExhibitS3Path) : [])]
+                        ] : []
+                    }
                     const templateFile = await getFileToS3(demandTemplate.templateFile);
                     const modifiedTemplateDocument = await createAndSaveTemplateReportWord(
                         templateFile,
@@ -3285,7 +3330,10 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                             medicalRecordsDetailsDoc: medicalRecordsParagraphs,
                             priorMedicalRecordsDetailsDoc: preMedicalRecordsParagraphs,
                             executiveSummaryDoc: processedExecutiveSummary,
-                            llmLibilityDescriptionDoc: llmLibilityDescriptionText,
+                            llmLibilityDescriptionDoc,
+                            LLMFactsOfIncident,
+                            LLMDangerousCondition, 
+                            LLMACNotice,
                             selectedAccidentFilesDoc: selectedAccidentFiles,
                             accidenPhotoExhibitLinkDoc: accidenPhotoExhibitLink,
                             propertyDamageHyperlinkSentenceDoc: accidentPhotoHyperlinkNumber,
@@ -3295,7 +3343,7 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                             acciedentFileExhibitSectionDoc,
                             bodyInjryPhotoHyperlinkNumber,
                             selectedBodyInjuryFilesArr,
-                            llmPainAndSufferingDoc: painAndSufferingReportText,
+                            llmPainAndSufferingDoc: painAndSufferingReportData,
                             monthsDifference: month,
                             pastMonthlyPainAmount: `$` + claimAmount,
                             pastNonEconomicDamages,
@@ -3307,6 +3355,7 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                             HourlyWorkingRate: workHourMissed,
                             his_her,
                             he_she,
+                            He_She,
                             him_her,
                             lossofIncomeCalculatedAmount,
                             MissedWorkHours: hourlyIncomeRate,
@@ -3662,31 +3711,33 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                                     }),
                                 ]
                             })] : []),
-                            ...[
-                                ...medicalRecordsParagraphs,
-                                (caseMedicalRecordsParagraphs?.length > 0 &&
-                                    new Paragraph({
-                                        spacing: {
-                                            after: 120
-                                        },
-                                        alignment: AlignmentType.LEFT,
-                                        children: isExhibitInlcuded ? [
-                                            new Bookmark({
-                                                id: "Exhibit3Id",
-                                                children: [
-                                                    new TextRun({
-                                                        children: [`Copies of ${clientFullName}'s records are attached as `],
-                                                        size: 24,
-                                                    }),
-                                                    medicalRecords?.length ? medicalRecordExhibitLink : new TextRun({
-                                                        children: ["Exhibit."],
-                                                        size: 24
-                                                    })
-                                                ]
-                                            })] : ""
-                                    })
-                                )
-                            ],
+                            ...(caseMedicalRecordsParagraphs?.length > 0 && (demand.value !== DEMAND_TYPE.Simplified_TP_PLD.value && demand.value !== DEMAND_TYPE.Simplified_UIM_PLD.value && demand.value !== DEMAND_TYPE.Simplified_UM_PLD.value)) ? 
+                                [
+                                    ...medicalRecordsParagraphs,
+                                    (caseMedicalRecordsParagraphs?.length > 0 &&
+                                        new Paragraph({
+                                            spacing: {
+                                                after: 120
+                                            },
+                                            alignment: AlignmentType.LEFT,
+                                            children: isExhibitInlcuded ? [
+                                                new Bookmark({
+                                                    id: "Exhibit3Id",
+                                                    children: [
+                                                        new TextRun({
+                                                            children: [`Copies of ${clientFullName}'s records are attached as `],
+                                                            size: 24,
+                                                        }),
+                                                        medicalRecords?.length ? medicalRecordExhibitLink : new TextRun({
+                                                            children: ["Exhibit."],
+                                                            size: 24
+                                                        })
+                                                    ]
+                                                })] : ""
+                                        })
+                                    )
+                                ] : (caseMedicalRecordsParagraphs?.length > 0 && (demand.value === DEMAND_TYPE.Simplified_TP_PLD.value || demand.value === DEMAND_TYPE.Simplified_UIM_PLD.value || demand.value === DEMAND_TYPE.Simplified_UM_PLD.value)) ? 
+                                    [...simplifiedMedicalRecordsParagraphs] : [],
                             ...(nonMedicalTitles || []),
 
                             new Paragraph({

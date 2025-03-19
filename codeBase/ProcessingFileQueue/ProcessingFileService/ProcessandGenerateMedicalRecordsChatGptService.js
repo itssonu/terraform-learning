@@ -448,7 +448,7 @@ const getMedicalProviderNames = async (content, updatedCompleteRequest, socketSe
             try {
                 const chunkPrompt = chunkProcessingPrompt.replace("{CHUNKED_FILE_TEXT}", chunk);
                 const response = await processAi({content: chunkPrompt, jsonValidator: true});
-                console.log(`Processed chunk ${index+1}/${chunkedFileText.length}`);
+                console.log(`Processed chunk ${index+1}/${chunkedFileText.length} for ${medicalProviderName}`);
                 return JSON.parse(response).treatmentDates || [];
             } catch (error) {
                 console.error(`Error processing chunk ${index}:`, error);
