@@ -1,0 +1,38 @@
+[{
+  "_id": {
+    "$oid": "66db43c26d57a1f4c19b09d7"
+  },
+  "firstName": "sonu",
+  "lastName": "INC",
+  "companyName": "sonu",
+  "companyAddress": "sonu address",
+  "companyPhoneNumber": "1234567890",
+  "domainName": "sonu.demandpro.law",
+  "taxiationID": "",
+  "contactNumber": "1234567890",
+  "accountantname": "sonu accountant",
+  "accountantemail": "sonu.account@yopmail.com",
+  "contactEmail": "sonu.company@yopmail.com",
+  "dataBasePassword": "12345678",
+  "isSuperAdmin": true,
+  "companyLogo": "",
+  "resetPassword": false,
+  "subscription": {
+    "monthlyPrice": 600,
+    "demandsPerMonth": 2,
+    "usersLimit": 2,
+    "costPerAdditionalUser": 50,
+    "costPerAdditionalDemand": 300,
+    "subscriptionRenewalDate": {
+      "$date": "2024-10-06T18:02:42.438Z"
+    },
+    "remainingDemand": 1,
+    "remainingUser": 0,
+    "rollOverCredits": 0,
+    "totalAlaCarteCases": 0,
+    "_id": {
+      "$oid": "66db43c26d57a1f4c19b09d8"
+    }
+  },
+  "__v": 0
+}]

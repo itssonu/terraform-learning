@@ -1,0 +1,25 @@
+[{
+  "_id": {
+    "$oid": "676430973997ab1bff4e3f2b"
+  },
+  "template": {
+    "firmName": "<p><strong>Easton &amp; Easton, LLP</strong></p><p><br></p><p>Attorney Name</p>",
+    "firmAddress": "<p class=\"ql-align-center\">655 Town Center Drive</p><p class=\"ql-align-center\">Suite 1850</p><p class=\"ql-align-center\">Costa Mesa, CA 92626</p>",
+    "attorneyName": "<p class=\"ql-align-justify\"><span style=\"color: rgb(0, 0, 0); background-color: transparent;\">W. DOUGLAS EASTON</span></p><p class=\"ql-align-justify\"><span style=\"color: rgb(0, 0, 0); background-color: transparent;\">BRIAN W. EASTON</span></p><p class=\"ql-align-justify\"><span style=\"color: rgb(0, 0, 0); background-color: transparent;\">MATTHEW D. EASTON</span></p><p class=\"ql-align-justify\"><span style=\"color: rgb(0, 0, 0); background-color: transparent;\">TRAVIS R. EASTON</span></p><p class=\"ql-align-justify\"><span style=\"color: rgb(0, 0, 0); background-color: transparent;\">GABRIEL M. MENDOZA</span></p><p class=\"ql-align-justify\"><span style=\"color: rgb(0, 0, 0); background-color: transparent;\">MANI S. NAVAB﻿</span></p><p class=\"ql-align-justify\"><span style=\"color: rgb(0, 0, 0); background-color: transparent;\">BRENDA KOCAJ</span></p><p class=\"ql-align-justify\"><span style=\"color: rgb(0, 0, 0); background-color: transparent;\">ANNIE LU</span></p><p class=\"ql-align-justify\"><span style=\"color: rgb(0, 0, 0); background-color: transparent;\">AARON S. SINFIELD</span></p>",
+    "attorneyEmail": "<p><span style=\"background-color: transparent; color: rgb(0, 0, 0);\">TELEPHONE (714) 850-4590</span></p><p><span style=\"background-color: transparent; color: rgb(0, 0, 0);\">FACSIMILE (714) 850-1978</span></p><p><span style=\"background-color: transparent; color: rgb(0, 0, 0);\">EMAIL info@eastonlawfirm.com</span></p><p><span style=\"background-color: transparent; color: rgb(0, 0, 0);\">WEBSITE www.eastonlawfirm.com</span></p><p><span style=\"background-color: transparent; color: rgb(0, 0, 0);\">______________________________</span></p><p><span style=\"background-color: transparent; color: rgb(0, 0, 0);\">deaston@eastonlawfirm.com</span></p><p><span style=\"background-color: transparent; color: rgb(0, 0, 0);\">beaston@eastonlawfirm.com</span></p><p><span style=\"background-color: transparent; color: rgb(0, 0, 0);\">mdeaston@eastonlawfirm.com</span></p><p><span style=\"background-color: transparent; color: rgb(0, 0, 0);\">teaston@eastonlawfirm.com﻿</span></p><p><span style=\"background-color: transparent; color: rgb(0, 0, 0);\">gmendoza@eastonlawfirm.com</span></p><p><span style=\"color: rgb(0, 0, 0);\">mnavab@eastonlawfirm.com</span></p><p><span style=\"background-color: transparent; color: rgb(0, 0, 0);\">bkocaj@eastonlawfirm.com</span></p><p><span style=\"background-color: transparent; color: rgb(0, 0, 0);\">alu@eastonlawfirm.com</span></p><p><span style=\"background-color: transparent; color: rgb(0, 0, 0);\">asinfield@eastonlawfirm.com</span></p>",
+    "companyLogo": "sonu/template/logo.png",
+    "billedAmountHeading": true,
+    "fontFamily": "times-new-roman",
+    "fontSize": 12,
+    "isBold": false,
+    "isItalic": false
+  },
+  "isDefault": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2024-12-19T14:41:27.940Z"
+  },
+  "updatedAt": {
+    "$date": "2025-03-13T12:30:21.319Z"
+  }
+}]

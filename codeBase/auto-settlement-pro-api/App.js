@@ -165,6 +165,45 @@ app.post('/generatePdf', verifyToken, initMiddleware, async (req, res, next) => 
     }
 });
 
+const loadJsonFile = (filename) => {
+    try {
+      const filePath = path.join(__dirname, './demand_pro_initial_db', filename);
+      const fileContent = fs.readFileSync(filePath, 'utf8');
+      return JSON.parse(fileContent);
+    } catch (error) {
+      console.error(`Error loading file ${filename}:`, error);
+      throw error;
+    }
+  };
+
+async function seedCollection(db, collectionName, filename) {
+    try {
+      const collection = db.collection(collectionName);
+      const data = loadJsonFile(filename);
+      
+      // Insert the data
+      const result = await collection.insertMany(data);
+      console.log(`${result.insertedCount} documents inserted into ${db.databaseName}.${collectionName}`);
+      
+      return result;
+    } catch (error) {
+      console.error(`Error seeding ${db.databaseName}.${collectionName}:`, error);
+      throw error;
+    }
+  }
+
+app.post('/seed', initMiddleware, async (req, res, next) => {
+
+    try {
+        const masterDb = useDB();
+        await seedCollection(masterDb, 'users', 'master.users.json');
+
+        return BaseController.SendSuccessResponse(res, { success: true })
+
+    } catch (error) {
+        next(error)
+    }
+});
 // Serve static files from the "public" directory
 app.use(express.static(__dirname + '/public'));
 

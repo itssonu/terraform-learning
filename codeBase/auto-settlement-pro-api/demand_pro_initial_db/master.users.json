@@ -1,0 +1,22 @@
+[{
+  "_id": {
+    "$oid": "64cba13f98351c2d0209982c"
+  },
+  "firstName": "pradeep",
+  "lastName": "negi",
+  "mobileNumber": "123456789",
+  "email": "pradeep.negi01000@gmail.com",
+  "password": "$2b$10$OtqHAUXxQJDVvV/gSEpeQ.VKpO3irLg8Y./GZCgGztnE0pteia5FO",
+  "isAdmin": true,
+  "isSuperAdmin": true,
+  "profilepic": "",
+  "__v": 0,
+  "domainName": "master.demandpro.law",
+  "resetPassword": true,
+  "resetToken": "c59bff720b86051735cf497745826797d646314e4f1f9f5e223e6730b2ad097de22d9ed432572a9220d4fe2bfb632271fd0926093e254fc851e6ef5b64b81cefc6da5b413814a5b65c27632337710902ef527c3e6dfa246e157d25e299c3d4ba754a07d83b92a3f1b933a8bc3daf8503bf602fb5c7252b56d24ed3fb6cb126f7597c752007cbd0c79156153150d61b8d6cef02f3786421d5030f99f8176a51e9fb28b5a6697cda0adfc181d43e25c75cac49b95174e03c96b694720db50f21e4acb70b77f81ca67d192b727d802f6b755f2b1ea7ed048cf3d04699f5cf2e81ff3392442202b800a187e578ed99f603dde8cc2ad24424a973358255a0bee0284b",
+  "resetTokenExpiry": {
+    "$date": "2024-09-13T14:10:43.554Z"
+  },
+  "role": "",
+  "subscription": ""
+}]
