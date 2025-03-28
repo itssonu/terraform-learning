@@ -89,7 +89,7 @@ jobs:
       run: |
         cd infrastructure/environments/${{ github.event.inputs.environment }}
         terraform apply -auto-approve -replace="module.demandpro_core.aws_lambda_function.api_app"
-        terraform apply -auto-approve -replace="module.demandpro_core.aws_ecs_service.pfq_service"
+        aws ecs update-service --cluster ${{ github.event.inputs.environment }}-tf-demandpro --service ${{ github.event.inputs.environment }}-pfq-service --force-new-deployment
         terraform apply -auto-approve
 
     - name: Set React environment variables

@@ -4,8 +4,9 @@ require('dotenv').config();
 const fileUpload = require("express-fileupload");
 const db = require('./src/db/dbConnection');
 require('web-streams-polyfill');
-const { processMedicalFileQueue, processMedicalBillFileQueue, processandGeneratePoliceReport, processPreMedicalFileQueue, getFileTextAndImage } = require('./ProcessingFileService/ProcessingFileQueueService');
+const { processMedicalFileQueue, processMedicalBillFileQueue, processandGeneratePoliceReport, processandFutureExpenseReport, processPreMedicalFileQueue, getFileTextAndImage } = require('./ProcessingFileService/ProcessingFileQueueService');
 const { policeReportChatGptProcessor } = require('./ProcessingFileService/ProcessingPoilceChatGptService');
+const { processingExpenseChatGptProcessor } = require('./ProcessingFileService/ProcessingExpenseChatGptService');
 const { processmedicalBillChatGptProcessor } = require('./ProcessingFileService/ProcessMedicalBillChatGptService');
 const { saveChatGptData } = require('./ProcessingFileService/SaveChatGptResponse');
 const { processeandGenerateDemandLetter } = require('./ProcessingFileService/ProcesseandGenerateDemandLetter');
@@ -50,6 +51,18 @@ const createMedicalChronology = require('./ProcessingFileService/medicalChronolo
 const { AsyncLocalStorage } = require('async_hooks');
 const { initLocalStorevalue, setLocalStorevalue, getLocalStorevalue } = require('./src/utils/localStore');
 
+let activeRequests = 0;
+
+function trackActiveRequest() {
+    activeRequests++;
+    console.log(`Task started. Active tasks: ${activeRequests}`);
+
+    return function completeTask() {
+        activeRequests--;
+        console.log(`Task completed. Active tasks: ${activeRequests}`);
+    };
+}
+  
 app.use(bodyParser.urlencoded({ limit: "100mb", extended: true, parameterLimit: 100000 })); // Support encoded bodies
 app.use(bodyParser.json({
     limit: "100mb",
@@ -102,7 +115,7 @@ function HandleCaseLoadingCalc(id, userId, domainName,isGenerateSummary) {
         medicalRecords: null,
         medicalBills: null,
         preMedicalRecords: null,
-        demandLetter: null
+        demandLetter: null,
     };
 
     this.recordCounts = {
@@ -110,7 +123,7 @@ function HandleCaseLoadingCalc(id, userId, domainName,isGenerateSummary) {
         medicalRecords: 0,
         medicalBills: 0,
         preMedicalRecords: 0,
-        demandLetter: 0
+        demandLetter: 0,
     };
 
     this.isGenerateSummary = isGenerateSummary;
@@ -125,6 +138,11 @@ function HandleCaseLoadingCalc(id, userId, domainName,isGenerateSummary) {
             totalFiles : 0,
             filesCount : 0,
             totalPages : 0,
+        },
+        demandLetter : {
+            totalFiles : 0,
+            filesCount : 0,
+            totalPages : 0,
         }
     }
 
@@ -132,7 +150,7 @@ function HandleCaseLoadingCalc(id, userId, domainName,isGenerateSummary) {
         this.timerCalc[fileType].filesCount += 1;
         this.timerCalc[fileType].totalPages += pagesNumber;
         if(this.timerCalc[fileType].filesCount >= this.timerCalc[fileType].totalFiles){
-            const timer = this.timerCalc[fileType].totalPages * 1000;
+            const timer = this.timerCalc[fileType].totalPages * 5000;
             this.startLoading(fileType,timer);
         }
     }
@@ -158,15 +176,15 @@ function HandleCaseLoadingCalc(id, userId, domainName,isGenerateSummary) {
         }
     };
 
-    this.startLoading = function (key,timer=10000) {
+    this.startLoading = function (key,timer=13000) {
         if (this.recordCounts[key] >= this.maxValues[key]) {
-            this.stopLoading(key);
+            this.stopLoading(key,true);
             return;
         }
 
         this.intervals[key] = setInterval(() => {
             if (this.recordCounts[key] >= this.maxValues[key]) {
-                this.stopLoading(key);
+                this.stopLoading(key,true);
                 return;
             }
             this.recordCounts[key] += 1;
@@ -174,13 +192,13 @@ function HandleCaseLoadingCalc(id, userId, domainName,isGenerateSummary) {
         }, timer);
     };
 
-    this.stopLoading = function (key) {
+    this.stopLoading = function (key,isTimeComplete=false) {
         if (this.intervals[key]) {
             clearInterval(this.intervals[key]);
             this.intervals[key] = null;
         }
         this.recordCounts[key] = this.maxValues[key];
-        this.updatePercent(key);
+        if(!isTimeComplete){this.updatePercent(key);}
     };
 
     this.policeReportLoading = function () {
@@ -236,6 +254,7 @@ const eventAgenda = async (job, domainName) => {
     let incidentReportFile = job?.incidentReportFile || null;
     let expertSafetyReport = job?.expertSafetyReport || null;
     let witnessStatementFile = job?.witnessStatementFile || null;
+    let futureExpenseFiles = detailsInputPayload.damage?.medicalExpensesReport || null;
 
     try {
 
@@ -252,8 +271,9 @@ const eventAgenda = async (job, domainName) => {
             const promise2 = processMedicalFile(medicalRecordsData, caseModel, userId, liability, medicalProviders, domainName) // Pass caseModel here
             const promise3 = processPreMedicalFile(preMedicalRecordData, caseModel, userId, liability, medicalProviders, domainName)
             const promise4 = processLiabilityFiles({ incidentReportFile, expertSafetyReport, witnessStatementFile }, userId, liability, caseModel, domainName)
+            const promise5 = ProcessFutureMedicalExpenseFile(futureExpenseFiles, caseModel, userId, liability, domainName, futureExpenseFiles)
 
-            await Promise.all([promise1, promise2, promise3, promise4]);
+            await Promise.all([promise1, promise2, promise3, promise4, promise5]);
 
             await socketService.medicalRecordsProgress("Successful", caseModel?._id, userId, domainName);
             await socketService.preMedicalRecordsProgress("Successful", caseModel?._id, userId, domainName);
@@ -326,6 +346,41 @@ const ProcessPoliceFile = async (arrayPoliceFiles, caseModel, userId, liability,
         await saveErrorLog(caseModel?._id, userId, errorCode, errorDescription, domainName);
     }
 }
+
+const ProcessFutureMedicalExpenseFile = async (arrayMedicalFiles, caseModel, userId, liability, domainName, futureExpenseFiles) => {
+    try {
+        if(arrayMedicalFiles && arrayMedicalFiles?.length > 0){
+            let fileTextArr = await processandFutureExpenseReport(arrayMedicalFiles, caseModel?._id, userId, socketService, liability, domainName, futureExpenseFiles);
+
+            let aiResponseArr = [];
+            for (const fileText of fileTextArr) {
+                try {
+                    let expenseBillsData = await processingExpenseChatGptProcessor(fileText, futureExpenseFiles, caseModel?._id, userId, domainName)
+                    aiResponseArr.push(expenseBillsData[0])
+                }
+                catch (err) {
+                    console.log(err)
+                    const errorCode = 500
+                    const errorDescription = err.message
+                    await saveErrorLog(caseModel?._id, userId, errorCode, errorDescription, domainName);
+                }
+    
+            }
+            const totalBillAmount = aiResponseArr.reduce((sum, obj) => parseInt(sum) + parseInt(obj.totalBillAmount), 0);
+            let expenseBillsRecord = {
+                expenseBillsChatGptResponse: { totalFutureMedicalBillsAmount: totalBillAmount }
+            }
+            await saveChatGptData(expenseBillsRecord, caseModel, domainName);
+        }
+    }
+    catch (err) {
+        console.log(err)
+        const errorCode = 500
+        const errorDescription = err.message
+        await saveErrorLog(caseModel?._id, userId, errorCode, errorDescription, domainName);
+    }
+}
+
 
 const getVisitDatesFromMedicalRecords = async (medicalRecordText) => {
     try {
@@ -429,16 +484,14 @@ const processPreMedicalFile = async (arrayMedicalFiles, caseModel, userId, liabi
         const [nestedVisitDates] = await Promise.all([Promise.all(medicalVisitsDatesPromise), providerPromises]);
 
         const allVisitDates = [...new Set(nestedVisitDates.flat().filter(date => date))];
-        await saveChatGptData({ preMedicalVisitDates: allVisitDates }, caseModel, domainName);
 
         // Wait for all providers to be processed
         const processedProviders = await Promise.all(providerPromises);
         
         // Merge providers based on their types
         const mergedProviders = mergeProvidersByType(processedProviders);
-        
-        // Save the merged providers data
-        await saveChatGptData({ preMedicalRecords: [mergedProviders] }, caseModel, domainName);
+
+        await saveChatGptData({ preMedicalRecords: [mergedProviders], preMedicalVisitDates: allVisitDates }, caseModel, domainName);
         
         // Generate medical treatment paragraphs
         const keyMedicalTreatmentParagraphs = mergedProviders.length > 0 
@@ -542,19 +595,14 @@ const processMedicalFile = async (arrayMedicalFiles, caseModel, userId, liabilit
 
         let billPromise = processMedicalBillFile(arrayMedicalFiles, caseModel, userId, liability, domainName, processMedicalFileextractedPdfText, medicalProviderNames, caseLoadingCalc);
 
-        const [nestedVisitDates] = await Promise.all([Promise.all(medicalVisitsDatesPromise), Promise.all(providerPromises), billPromise]);
+        const [nestedVisitDates, processedProviders] = await Promise.all([Promise.all(medicalVisitsDatesPromise), Promise.all(providerPromises), billPromise]);
 
         const allVisitDates = [...new Set(nestedVisitDates.flat().filter(date => date))];
-        await saveChatGptData({ visitDates: allVisitDates }, caseModel, domainName);
-
-        // Wait for all providers to be processed
-        const processedProviders = await Promise.all(providerPromises);
         
         // Merge providers based on their types
         const mergedProviders = mergeProvidersByType(processedProviders);
-        
-        // Save the merged providers data
-        await saveChatGptData({ medicalRecords: [mergedProviders] }, caseModel, domainName);
+
+        await saveChatGptData({ medicalRecords: [mergedProviders], visitDates: allVisitDates, }, caseModel, domainName);
         
         // Generate medical treatment paragraphs
         const {keyMedicalTreatmentParagraphs, simplifiedTreatmentParagraphs} = mergedProviders.length > 0 
@@ -564,9 +612,8 @@ const processMedicalFile = async (arrayMedicalFiles, caseModel, userId, liabilit
         let processedExecutiveSummary = mergedProviders?.length > 0 ? await getSummary({ medicalRecords: [mergedProviders], userData: caseModel?.detailsInput }) : "No records found";
 
         
-        await saveChatGptData({ medicalRecordsParagraphs: keyMedicalTreatmentParagraphs }, caseModel, domainName);
-        await saveChatGptData({ simplifiedTreatmentParagraphs: simplifiedTreatmentParagraphs }, caseModel, domainName);
-        await saveChatGptData({ executiveSummary: processedExecutiveSummary }, caseModel, domainName);
+        await saveChatGptData({ executiveSummary: processedExecutiveSummary, medicalRecordsParagraphs: keyMedicalTreatmentParagraphs, simplifiedTreatmentParagraphs: simplifiedTreatmentParagraphs, }, caseModel, domainName);
+
         await socketService.medicalRecordsProgress("Successful", caseModel?._id, userId, domainName);
 
         caseLoadingCalc.stopLoading("medicalRecords");
@@ -770,7 +817,10 @@ const removeDuplicateDates = (data) => {
 
 const generateDemand = async (caseModel, liability, injury, damage, userId, domainName, isEditedCase) => {
     const caseLoadingCalc = getLocalStorevalue(localStoreObj.caseLoadingObj);
-    caseLoadingCalc.demandLetterLoading()
+    //caseLoadingCalc.demandLetterLoading()
+    console.log("caseloadingCalc medical records totalPages: ")
+    console.log(caseLoadingCalc.timerCalc.medicalRecords.totalPages)
+    caseLoadingCalc.updateTimer("demandLetter", caseLoadingCalc.timerCalc.medicalRecords.totalPages );
     const db = mongoose.connection.useDb(domainName);
     const CaseModal = db.model("cases", CaseSchema);
     const findcaseModel = await CaseModal.findById(caseModel._id);
@@ -1083,9 +1133,12 @@ app.post('/create', cors(corsOptions), isAuth,initLocalStorevalue, async (req, r
         if (witnessStatementFile) { payload.witnessStatementFile = witnessStatementFile }
 
         if (damage.processCase) {
+            const complete = trackActiveRequest()
             processCaseFiles(payload).then(() => {
+                complete()
                 console.log('File processing completed');
             }).catch((err) => {
+                complete()
                 console.error('File processing failed:', err);
             })
         }
@@ -1101,7 +1154,21 @@ app.post('/create', cors(corsOptions), isAuth,initLocalStorevalue, async (req, r
 
 app.post('/test', cors(corsOptions), async (req, res) => {
     try {
-        createAndSaveSetttlementReportWord('sonu', '67a4b88ad88675186787935e', { key: 'thirdPartyPolicyLimit', text: 'Third Party Policy Limit Demand', value: DEMAND.TP_PLD })
+        const { min } = req.body
+        
+        for (let i = 0; i < 20; i++) {
+            const complete = trackActiveRequest()
+            wait(i).then(() => {
+                complete()
+                console.log('File processing completed');
+            }).catch((err) => {
+                complete()
+                console.error('File processing failed:', err);
+            })
+        }
+
+        //createAndSaveSetttlementReportWord('easton', '67c9d21ed2b321186ee46a44', { key: 'thirdPartyPolicyLimit', text: 'Third Party Policy Limit Demand', value: DEMAND.TP_PLD, alias: "3P_PLD" })
+
         return res.status(201).json({ message: "successfully", success: true })
 
     }
@@ -1293,6 +1360,7 @@ app.post('/PreProcessMedicalRecords', cors(corsOptions), isAuth,initLocalStoreva
             const resp = await Case.findByIdAndUpdate(caseModel._id, { isPreProcessRecordLoading: false }, { new: true }).select("isPreProcessRecordLoading detailsInput.injury result.medicalRecords result.preMedicalRecords result.medicalBillRecords");
             const sendObj = { caseId: caseModel._id, isPreProcessRecordLoading: false, injury: resp?.detailsInput?.injury, medicalRecords: resp.result?.medicalRecords?.flat(), preMedicalRecords: resp.result?.preMedicalRecords?.flat(), medicalBillRecords: resp.result?.medicalBillRecords }
             caseLoadingCalc.completeProcessing();
+            createMedicalChronology(dbName, caseModel?._id, DEMAND_TYPE[DEMAND.Medical_Chronology]);
             await socketService.preProcessRecord(authId, sendObj);
         }).catch((err) => {
             console.error('File processing failed:', err);
@@ -1945,7 +2013,64 @@ function transformCaseDetails(oldDetailsInput) {
     };
 }
 
-server.listen(5000, () => {
+server.listen(process.env.PORT || 5000, () => {
     db.initDb();
-    console.log('server started at 5000')
+    console.log('server started at ' + process.env.PORT || 5000)
 });
+
+function gracefulShutdown(server, maxWaitTimeMs = 90 * 60 * 1000) {
+    return new Promise((resolve) => {
+        console.log('🔄 Graceful shutdown initiated');
+
+        server.close(() => {
+            console.log('✅ HTTP server closed, no longer accepting connections');
+        });
+
+        if (activeRequests === 0) {
+            console.log('✅ No active tasks, shutting down immediately');
+            return resolve();
+        }
+
+        console.log(`⏳ Waiting for ${activeRequests} active tasks to complete...`);
+
+        const shutdownTimer = setTimeout(() => {
+            console.log(`⚠️ Maximum wait time of ${maxWaitTimeMs}ms exceeded, forcing exit`);
+            resolve();
+        }, maxWaitTimeMs);
+
+        const interval = setInterval(() => {
+            if (activeRequests === 0) {
+                clearTimeout(shutdownTimer);
+                clearInterval(interval);
+                console.log('✅ All background tasks completed successfully');
+                resolve();
+            } else {
+                console.log(`⏳ Still waiting for ${activeRequests} tasks to complete...`);
+            }
+        }, 5000); // Check every 5 seconds
+    });
+}
+
+['SIGTERM', 'SIGINT'].forEach(signal => {
+    process.on(signal, async () => {
+        console.log(`📣 Received ${signal} signal`);
+
+        try {
+            // Execute the graceful shutdown procedure
+            await gracefulShutdown(server);
+            console.log('👋 Graceful shutdown completed, exiting process');
+            process.exit(0);
+        } catch (error) {
+            console.error('💥 Error during graceful shutdown:', error);
+            process.exit(1);
+        }
+    });
+});
+
+async function wait(min) {
+    console.log("Process started...", min);
+
+    await new Promise((resolve) => setTimeout(resolve, min * 60 * 1000));
+
+    console.log(`${min} min completed!`);
+}

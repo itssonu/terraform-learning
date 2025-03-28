@@ -35,10 +35,10 @@ const Profile = () => {
     lastName: Yup.string().required('Last name is required'),
   })
   const onProfileUpload = (files, setFieldValue) => {
-
-    setprofilefileName(files.file.name);
-    setprofilefileName((prev) => ({ ...prev, fileName: files.file.name, imageUrl: URL.createObjectURL(files?.file) }))
-    setFieldValue('profilepic', files?.file)
+    const file = files?.file[0]
+    setprofilefileName(file.name);
+    setprofilefileName((prev) => ({ ...prev, fileName: file.name, imageUrl: URL.createObjectURL(file) }))
+    setFieldValue('profilepic', file)
   }
   const onSubmit = (values, setErrors) => {
 

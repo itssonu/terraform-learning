@@ -2,9 +2,9 @@ const CaseSchema = require("../db/models/Case");
 const CompaniesSchema = require("../db/models/Companies");
 const { useDB } = require("./dbUtil");
 
-const countCases = async ({ DBName, from, to }) => {
-    from = from && new Date(from);
-    to = to && new Date(to);
+const countCases = async ({ DBName, selectedRange }) => {
+    const from = selectedRange?.startDate && new Date(selectedRange?.startDate);
+    const to = selectedRange?.endDate && new Date(selectedRange?.endDate);
 
     const companyDB = useDB(DBName)
 
@@ -12,10 +12,10 @@ const countCases = async ({ DBName, from, to }) => {
 
     const matchFilter = {};
 
-    if (from || to) {
+    if (selectedRange?.startDate || selectedRange?.endDate) {
         matchFilter.createdAt = {};
-        if (from) matchFilter.createdAt.$gte = from;
-        if (to) matchFilter.createdAt.$lte = to;
+        if (selectedRange?.startDate) matchFilter.createdAt.$gte = from;
+        if (selectedRange?.endDate) matchFilter.createdAt.$lte = to;
     }
 
     const data = await CaseModel.aggregate([

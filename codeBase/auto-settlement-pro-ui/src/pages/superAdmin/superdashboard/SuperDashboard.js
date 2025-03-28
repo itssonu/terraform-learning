@@ -32,7 +32,7 @@ const SuperDashboard = () => {
     const { postData: companyAnalyticsPostData, isLoading: companyAnalyticsIsLoading } = useAxios()
 
     const getCompanyAnalytics = useCallback(async () => {
-        const { success, data, message } = await companyAnalyticsPostData(Constants.ApiUrl.super.dashboard.companyAnalytics, { from, to });
+        const { success, data, message } = await companyAnalyticsPostData(Constants.ApiUrl.super.dashboard.companyAnalytics, { selectedRange: selectedRange });
 
         if (success) {
             console.log(data);
@@ -43,13 +43,13 @@ const SuperDashboard = () => {
         } else {
             toaster({ message, success });
         }
-    }, [from, to, companyAnalyticsPostData]);
+    }, [selectedRange, companyAnalyticsPostData]);
 
     useEffect(() => {
         if (from && to) {
             getCompanyAnalytics()
         }
-    }, [from, to, getCompanyAnalytics])
+    }, [selectedRange, getCompanyAnalytics])
 
     const handleViewAll = () => {
         setIsOpenDateRange(false);

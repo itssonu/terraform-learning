@@ -252,10 +252,12 @@ class TemplateController extends BaseController {
             // Handle template file
             let putTemplateFileSignedUrl
             if (templateFile === "remove") {
-                payload.templateFile = ''
+                payload.templateFile = '';
+                payload.templateFileName = '';
             }
 
             if (templateFile?.name && templateFile?.mimetype) {
+                payload.templateFileName = templateFile.name;
                 const { ext } = separateFilenameAndExtension(templateFile.name);
                 const path = `${dbName}/template/${demandType}-${caseType}-${state}-file.${ext}`;
 

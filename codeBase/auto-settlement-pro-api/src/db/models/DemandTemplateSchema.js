@@ -67,6 +67,9 @@ const DemandTemplateSchema = new mongoose.Schema({
     badFaithExposerDescription: {
         type: String
     },
+    templateFileName: {
+        type: String
+    },
     templateFile: {
         type: String
     },

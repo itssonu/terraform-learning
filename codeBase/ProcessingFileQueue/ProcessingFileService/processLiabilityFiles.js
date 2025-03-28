@@ -122,6 +122,9 @@ exports.processLiabilityFiles = async (fileObject, userId, liability, caseModel,
             - Be objective and avoid speculation or subjective statements
             - Ensure the narrative flows logically and is easy to follow
             - Do not add any analysis, explanations, or additional information beyond the facts provided
+
+        If there is no case information found, return the string "no data"
+        
         `;
         const LLMDangerousConditionPrompt = `Used to following pieces of text to create a "Dangerous Conditions" section of a demand letter.
         Case information: ${dangerousConditions} ${witnessStatementFileLLMResult} ${expertSafetyReportLLMResult}
@@ -133,6 +136,9 @@ exports.processLiabilityFiles = async (fileObject, userId, liability, caseModel,
             - Be objective and avoid speculation or subjective statements
             - Ensure the narrative flows logically and is easy to follow
             - Do not add any analysis, explanations, or additional information beyond the facts provided
+
+        If there is no case information found, return the string "no data"
+        
         `;
         const LLMACNoticePrompt = `Used to following pieces of text to create a "Actual or Constructive Notice" section of a demand letter.
         Case information: ${stateFactsNotice} ${witnessStatementFileLLMResult} ${expertSafetyReportLLMResult}
@@ -144,6 +150,9 @@ exports.processLiabilityFiles = async (fileObject, userId, liability, caseModel,
             - Be objective and avoid speculation or subjective statements
             - Ensure the narrative flows logically and is easy to follow
             - Do not add any analysis, explanations, or additional information beyond the facts provided
+
+        If there is no case information found, return the string "no data"
+
         `;
 
         const [LLMFactsOfIncident, LLMDangerousCondition, LLMACNotice] = await Promise.all([
@@ -203,6 +212,9 @@ was forced to lay down her bike. Her body only came to rest after violently stri
             - Be objective and avoid speculation or subjective statements
             - Ensure the narrative flows logically and is easy to follow
             - Do not add any analysis, explanations, or additional information beyond the facts provided
+
+        If there is no case information found, return the string "no data"
+        
         `;
 
         const [LLMFactsOfIncident] = await Promise.all([
@@ -264,6 +276,9 @@ was forced to lay down her bike. Her body only came to rest after violently stri
             - Be objective and avoid speculation or subjective statements
             - Ensure the narrative flows logically and is easy to follow
             - Do not add any analysis, explanations, or additional information beyond the facts provided
+
+        If there is no case information found, return the string "no data"
+        
         `;
         const LLMAdequateWarningPrompt = `Used to following pieces of text to create a "Adequate Warning" section of a product liability demand letter.
         Case information: ${factsFailureClaim} ${witnessStatementFileLLMResult} ${expertSafetyReportLLMResult}
@@ -275,6 +290,9 @@ was forced to lay down her bike. Her body only came to rest after violently stri
             - Be objective and avoid speculation or subjective statements
             - Ensure the narrative flows logically and is easy to follow
             - Do not add any analysis, explanations, or additional information beyond the facts provided
+
+        If there is no case information found, return the string "no data"
+        
         `;
         const LLMConsumerExpectationPrompt = `Used to following pieces of text to create a "Consumer Expectation" section of a product liability demand letter.
         Case information: ${factsConsumerExpectation} ${witnessStatementFileLLMResult} ${expertSafetyReportLLMResult}
@@ -286,6 +304,9 @@ was forced to lay down her bike. Her body only came to rest after violently stri
             - Be objective and avoid speculation or subjective statements
             - Ensure the narrative flows logically and is easy to follow
             - Do not add any analysis, explanations, or additional information beyond the facts provided
+
+        If there is no case information found, return the string "no data"
+        
         `;
         const LLMRiskBenefitPrompt = `Used to following pieces of text to create a "Risk Benefit" section of a product liability demand letter.
         Case information: ${factsRipkBenefit} ${witnessStatementFileLLMResult} ${expertSafetyReportLLMResult}
@@ -297,6 +318,9 @@ was forced to lay down her bike. Her body only came to rest after violently stri
             - Be objective and avoid speculation or subjective statements
             - Ensure the narrative flows logically and is easy to follow
             - Do not add any analysis, explanations, or additional information beyond the facts provided
+
+        If there is no case information found, return the string "no data"
+        
         `;
         const LLMManufacturingDefectPrompt = `Used to following pieces of text to create a "Manufacturing Defect" section of a product liability demand letter.
         Case information: ${factsManufacturingDefect} ${witnessStatementFileLLMResult} ${expertSafetyReportLLMResult}
@@ -308,6 +332,9 @@ was forced to lay down her bike. Her body only came to rest after violently stri
             - Be objective and avoid speculation or subjective statements
             - Ensure the narrative flows logically and is easy to follow
             - Do not add any analysis, explanations, or additional information beyond the facts provided
+
+        If there is no case information found, return the string "no data"
+        
         `;
 
         const [LLMFactsOfIncident, LLMAdequateWarning, LLMConsumerExpectation, LLMRiskBenefit, LLMManufacturingDefect] = await Promise.all([

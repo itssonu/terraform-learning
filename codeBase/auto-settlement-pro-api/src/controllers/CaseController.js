@@ -42,7 +42,7 @@ class CaseController extends BaseController {
                     isCaseEdited: 1,
                     updatedOn: 1
                 });
-    
+
             // Map the results to use the new location if available, otherwise use the old location
             const mappedCases = cases.map(caseItem => {
                 const caseDoc = caseItem.toObject();
@@ -59,10 +59,10 @@ class CaseController extends BaseController {
                 }
                 return caseDoc;
             });
-    
+
             const totalCount = await Case.countDocuments(query);
             const subscription = await getSubscriptionDetail({ domainName });
-    
+
             BaseController.SendSuccessResponse(res, {
                 data: {
                     cases: mappedCases,
@@ -100,7 +100,7 @@ class CaseController extends BaseController {
             }
 
 
-            
+
             const signedUrlFunc = (key) => {
                 return new Promise((resolve, reject) => {
                     s3.getSignedUrl('getObject', { Bucket: process.env.AWS_S3_BUCKET, Key: key }, (err, url) => {
@@ -121,7 +121,7 @@ class CaseController extends BaseController {
                     );
                 } catch (error) {
                     console.error("Error fetching signed URLs:", error);
-                    return files; 
+                    return files;
                 }
             };
 

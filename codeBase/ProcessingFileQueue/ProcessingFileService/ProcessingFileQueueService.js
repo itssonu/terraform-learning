@@ -1,4 +1,4 @@
-const { convertPDFToImages, policeReportPDF } = require('./ProcessingPdfServices');
+const { convertPDFToImages, policeReportPDF, medicalExpensePDF } = require('./ProcessingPdfServices');
 const mongoose = require("mongoose");
 const CaseSchema = require('../src/db/models/Case');
 const { processAi } = require('./ChatGptPdfProcessor');
@@ -113,7 +113,25 @@ const getFileTextAndImage = async (fileArray, caseId, userId, socketService, soc
     };
 };
 
+const processandFutureExpenseReport = async (fileArray, caseId, userId, socketService, liability, domainName, damage) => {
+
+    // Process files in parallel but collect results in order
+    const processingPromises = fileArray.map((file, index) =>
+        medicalExpensePDF(file.s3UrlPath , damage, "medicalExpensesExhibitPaths", caseId, domainName, index)
+    );
+
+    const results = await Promise.all(processingPromises);
+
+    const extractedPdfTextArr = results.map(text =>
+        text ? text.replace(/\s+/g, ' ').trim() : ''
+    );
+
+    return extractedPdfTextArr;
+};
+
 module.exports = {
     processandGeneratePoliceReport,
-    getFileTextAndImage
+    getFileTextAndImage,
+    processandFutureExpenseReport
+
 }

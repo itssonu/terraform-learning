@@ -15,6 +15,7 @@ import { ReactComponent as UploadTemplateBlue } from "../../../src/assets/icons/
 import { ReactComponent as CustomTemplateBlue } from "../../../src/assets/icons/CustomTemplateBlue.svg";
 import { ReactComponent as FilterIcon } from "../../../src/assets/icons/FilterIcon.svg";
 import { ReactComponent as RemoveCustomFileIcon } from "../../../src/assets/icons/RemoveCustomFileIcon.svg";
+import { ReactComponent as DownloadButtonIcon } from "../../../src/assets/icons/DownloadButtonIcon.svg";
 import { ReactComponent as EditCustomFileIcon } from "../../../src/assets/icons/EditCustomFileIcon.svg";
 import { ReactComponent as NextArrowIcon } from "../../../src/assets/icons/NextArrowIcon.svg";
 import { ReactComponent as BackArrowIcon } from "../../../src/assets/icons/BackArrowIcon.svg";
@@ -75,7 +76,8 @@ const TemplateList = () => {
         onChangeParagraphSpacingBefore,
         onChangeParagraphSpacingAfter,
         onChangeBulletSpacingBefore,
-        onChangeBulletSpacingAfter
+        onChangeBulletSpacingAfter,
+        viewFileInNewTab
     } = useTemplateContext();
 
     return (
@@ -160,6 +162,7 @@ const TemplateList = () => {
                                     const demandType = item?.demandType
                                     const caseType = item?.caseType
                                     const state = item?.state
+                                    const templateFile = item?.data?.templateFile
 
                                     return (
                                         <tr key={i}>
@@ -182,17 +185,21 @@ const TemplateList = () => {
                                                         </button>
                                                     </div> :
                                                     <>
-                                                        {item?.data?.templateFile ?
+                                                        {templateFile ?
                                                             <div class="uploaded-doc d-flex justify-content-between">
                                                                 <span class="d-flex align-items-center gap-2">
                                                                     <UploadTemplate />
-                                                                    <span style={{width:"280px",whiteSpace: "nowrap", overflow: "hidden",textOverflow: "ellipsis"}}>
-                                                                    {item?.data?.templateFile.split("/").at("-1")}
+                                                                    <span style={{width:"230px",whiteSpace: "nowrap", overflow: "hidden",textOverflow: "ellipsis"}}>
+                                                                    {item?.data?.templateFileName ? item?.data?.templateFileName : "Demand Template File"}
                                                                     </span>
                                                                 </span>
                                                                 <div className='action-icons'>
-                                                                    <button className='outline-btn-hover btn btn-theme btn-border btn-sm' type='button' onClick={() => removeTemplateFile(item)} style={{ minWidth: "auto" }}>
+                                                                    <button className='outline-btn-hover btn btn-theme btn-border btn-sm me-3' type='button' onClick={() => removeTemplateFile(item)} style={{ minWidth: "auto" }}>
                                                                         <RemoveCustomFileIcon />
+                                                                    </button>
+
+                                                                    <button className='outline-btn-hover btn btn-theme btn-border btn-sm' type='button' onClick={() => viewFileInNewTab(templateFile)} style={{ minWidth: "auto" }}>
+                                                                        <DownloadButtonIcon />
                                                                     </button>
                                                                 </div>
                                                             </div> :
@@ -202,9 +209,15 @@ const TemplateList = () => {
                                                                     Custom Template
                                                                 </span>
                                                                 <div className='action-icons'>
+
+                                                                    <button className='outline-btn-hover btn btn-theme btn-border btn-sm me-3' type='button' onClick={() => openModal(item)} style={{ minWidth: "auto" }}>
+                                                                        <UploadTemplateBlue />
+                                                                    </button>
+
                                                                     <button className='outline-btn-hover btn btn-theme btn-border btn-sm me-3' type='button' onClick={() => editCustomTemplateHandler(item)} style={{ minWidth: "auto" }}>
                                                                         <EditCustomFileIcon />
                                                                     </button>
+                                                                    
                                                                     <button className='outline-btn-hover btn btn-theme btn-border btn-sm' type='button' onClick={() => deleteTemplate({ demandType, caseType, state })} style={{ minWidth: "auto" }}>
                                                                         <RemoveCustomFileIcon />
                                                                     </button>

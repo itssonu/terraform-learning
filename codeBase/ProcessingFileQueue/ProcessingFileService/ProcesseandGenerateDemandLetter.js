@@ -118,7 +118,7 @@ const processeandGenerateDemandLetter = async (liability, injury, damage, caseMo
             let address = companyData?.companyAddress
             let companyName = companyData?.companyName
 
-            const pdfPath = await InvoiceService(userId, caseModel?._id, liability.caseName, caseModel.createdOn, caseInfo?.s3UniqueId, demandPrice, domainName, companyName, address)
+            const pdfPath = await InvoiceService(userId, caseModel?._id, caseModel?.detailsInput?.caseInfo?.caseName, caseModel.createdOn, caseInfo?.s3UniqueId, demandPrice, domainName, companyName, address)
 
             await caseDbModel.findOneAndUpdate({ _id: caseModel?._id }, { invoiceFilePath: pdfPath }).lean();
             const mail = companyData?.accountantemail;

@@ -64,13 +64,9 @@ async function uploadImagesToS3(imagesBufferArr, s3ExhibitPath, fileIndex) {
     return Promise.all(uploadPromises);
 }
 
-async function convertExhibitFiles(pdfBuffer,exhibitDirectoryName) {
+async function convertExhibitFiles(pdfBuffer,exhibitDirectoryName, pageCount) {
     try {
         console.log("inside convertExhibitFiles");
-        
-        // First, count the number of pages in the PDF
-        const pageCount = await robustCountPdfPages(pdfBuffer);
-        console.log(`PDF has ${pageCount} pages`);
         
         // Check if the PDF exceeds the page limit
         if (pageCount > 150) {
@@ -118,11 +114,12 @@ async function convertExhibitFiles(pdfBuffer,exhibitDirectoryName) {
                         start = i;
                     }
                     if (imageBuffer[i] === 0xFF && imageBuffer[i + 1] === 0xD9) {
-                        console.log("saved image ", imageBuffers.length, "from gs buffer");
+                        //console.log("saved image ", imageBuffers.length, "from gs buffer");
                         imageBuffers.push(imageBuffer.slice(start, i + 2));
                     }
                 }
                 resolve(imageBuffers);
+                console.log("saved ", imageBuffers.length, " images from gs buffer");
             });
 
             gs.stderr.on('data', data => {
@@ -357,9 +354,10 @@ const isTextractJobComplete = async (client, jobId, awsServiceName = "getDocumen
 
         try {
             const status = await retryWithExponentialBackoff(async () => await checkStatus());
-            console.log(`Job status: ${status}`);
+            //console.log(`Job status: ${status}`);
 
             if (status !== "IN_PROGRESS") {
+                console.log(`Textract job status: ${status}`);
                 if (status === "SUCCEEDED") {
                     return status
                 }
@@ -377,7 +375,7 @@ const isTextractJobComplete = async (client, jobId, awsServiceName = "getDocumen
 
 async function pageNumber(s3FilePath, exhibitDirectoryName, fileIndex) {
     try {
-        const maxPagesPerChunk = 1000 //modified as requested by client
+        const maxPagesPerChunk = 200
         const s3PathSplitArr = s3FilePath?.split("/");
         const s3ExhibitPath = s3PathSplitArr?.slice(0, -2)?.join("/");
         const fileName = path.basename(s3FilePath).split(".")[0];
@@ -386,20 +384,17 @@ async function pageNumber(s3FilePath, exhibitDirectoryName, fileIndex) {
         const metaData = object.Metadata;
         const pdfBuffer = object.Body;
 
-        const imagesBufferArrPromise = convertExhibitFiles(pdfBuffer,exhibitDirectoryName);
+        const pageCount = await robustCountPdfPages(pdfBuffer);
+        console.log(`PDF has ${pageCount} pages`);
 
-        const chunkProcessingPromises = textractPdfFile(pdfBuffer, maxPagesPerChunk, s3FilePath, metaData);
+        const imagesBufferArrPromise = convertExhibitFiles(pdfBuffer,exhibitDirectoryName, pageCount);
 
-        const [chunkProcessing, imagesBufferArr] = await Promise.all([chunkProcessingPromises, imagesBufferArrPromise]);
-        let combinedTextractResults = chunkProcessing.map(chunk => chunk.textractResult).flat();
+        const chunkProcessingPromises = textractPdfFile(pdfBuffer, maxPagesPerChunk, s3FilePath, metaData, pageCount);
 
-        combinedTextractResults = combinedTextractResults.map((v, k) => {
-            return { pageNumber: v.pageNumber + k, text: v.text }
-        })
-
+        const [combinedTextractResults, imagesBufferArr] = await Promise.all([chunkProcessingPromises, imagesBufferArrPromise]);
 
         if (imagesBufferArr.exceededPageLimit) {
-            console.log(`Skipped conversion for PDF with ${imagesBufferArr.pageCount} pages`);
+            console.log(`Skipped conversion for PDF with ${imagesBufferArr?.pageCount} pages`);
 
             return {
                 awsExhibitPaths: [],
@@ -431,81 +426,188 @@ async function pageNumber(s3FilePath, exhibitDirectoryName, fileIndex) {
         throw error;
     }
 
-    async function textractPdfFile(pdfBuffer, maxPagesPerChunk, s3FilePath, metaData) {
+}
 
-        const pageCount = await robustCountPdfPages(pdfBuffer);
-        const chunkProcessingPromises = [];
-        if (pageCount > maxPagesPerChunk) {
-            const numChunks = Math.ceil(pageCount / maxPagesPerChunk);
+async function textractPdfFile(pdfBuffer, maxPagesPerChunk, s3FilePath, metaData, pageCount) {
 
-            for (let chunkIndex = 0; chunkIndex < numChunks; chunkIndex++) {
-                const fromPageNumber = chunkIndex * maxPagesPerChunk + 1;
-                const toPageNumber = Math.min((chunkIndex + 1) * maxPagesPerChunk, pageCount);
-                const processChunk = async () => {
-                    try {
+    // If document is small enough, process directly
+    if (pageCount <= maxPagesPerChunk) {
+        console.log('Document is small enough to process directly');
+        try {
+            const jobID = await startTextractJob(textractClient, s3FilePath);
+            await isTextractJobComplete(textractClient, jobID);
+            const textractResult = await getTextractJobResults(textractClient, jobID);
 
-                        const chunkBuffer = await splitPdf({
-                            pdfBuffer,
-                            fromPageNumber,
-                            toPageNumber
-                        });
-
-                        const chunkKey = s3FilePath.replace(/(\.[a-zA-Z0-9]+)$/, `-pages-${fromPageNumber}-${toPageNumber}$1`);
-
-                        await s3Client.putObject({
-                            Bucket: process.env.AWS_S3_BUCKET,
-                            Key: chunkKey,
-                            Body: chunkBuffer,
-                            Metadata: metaData,
-                        }).promise();
-
-                        const jobID = await startTextractJob(textractClient, chunkKey);
-
-                        await isTextractJobComplete(textractClient, jobID);
-
-                        const chunkTextractResult = await getTextractJobResults(textractClient, jobID);
-
-                        // Clean up the temporary chunk file
-                        console.log(`Cleaning up temporary chunk file: ${chunkKey}`);
-                        await s3Client.deleteObject({
-                            Bucket: process.env.AWS_S3_BUCKET,
-                            Key: chunkKey
-                        }).promise();
-
-                        // Return the Textract results with page information
-                        return {
-                            pageCount,
-                            pageRange: { from: fromPageNumber, to: toPageNumber },
-                            textractResult: chunkTextractResult
-                        };
-                    } catch (error) {
-                        console.error(`Error processing chunk ${chunkIndex + 1}:`, error);
-                        throw error;
-                    }
-                };
-
-                chunkProcessingPromises.push(processChunk());
-            }
-        } else {
-            const textractProcessing = async () => {
-                const jobID = await startTextractJob(textractClient, s3FilePath);
-
-                await isTextractJobComplete(textractClient, jobID);
-
-                const chunkTextractResult = await getTextractJobResults(textractClient, jobID);
-
-                return {
-                    pageCount,
-                    pageRange: { from: 1, to: pageCount },
-                    textractResult: chunkTextractResult
-                };
-            };
-
-            chunkProcessingPromises.push(textractProcessing());
+            return textractResult;
+        } catch (error) {
+            console.error(`Error processing document directly:`, error);
+            throw error;
         }
-
-        return Promise.all(chunkProcessingPromises);
     }
+
+    const numChunks = Math.ceil(pageCount / maxPagesPerChunk);
+
+    // STEP 1
+    console.log(`STEP 1: Splitting PDF into ${numChunks} chunks in parallel`);
+    const chunkDefinitions = [];
+
+    for (let chunkIndex = 0; chunkIndex < numChunks; chunkIndex++) {
+        const fromPageNumber = chunkIndex * maxPagesPerChunk + 1;
+        const toPageNumber = Math.min((chunkIndex + 1) * maxPagesPerChunk, pageCount);
+
+        chunkDefinitions.push({
+            chunkIndex,
+            fromPageNumber,
+            toPageNumber,
+            chunkKey: s3FilePath.replace(/(\.[a-zA-Z0-9]+)$/, `-pages-${fromPageNumber}-${toPageNumber}$1`)
+        });
+    }
+
+    const splittingPromises = chunkDefinitions.map(async (chunk) => {
+        try {
+            console.log(`Splitting chunk ${chunk.chunkIndex + 1}/${numChunks}: pages ${chunk.fromPageNumber}-${chunk.toPageNumber}`);
+
+            const chunkBuffer = await splitPdf({
+                pdfBuffer,
+                fromPageNumber: chunk.fromPageNumber,
+                toPageNumber: chunk.toPageNumber
+            });
+
+            return {
+                ...chunk,
+                buffer: chunkBuffer
+            };
+        } catch (error) {
+            console.error(`Error splitting chunk ${chunk.chunkIndex + 1}:`, error);
+            throw error;
+        }
+    });
+
+    let splitResults;
+    try {
+        splitResults = await Promise.all(splittingPromises);
+        console.log(`Successfully split all ${numChunks} chunks`);
+    } catch (error) {
+        console.error(`Failed during PDF splitting phase:`, error);
+        throw error;
+    }
+
+    // STEP 2 upload to s3
+    console.log(`STEP 2: Uploading all ${splitResults.length} chunks to S3 in parallel`);
+
+    const uploadPromises = splitResults.map(async (chunk) => {
+        try {
+            console.log(`Uploading chunk ${chunk.chunkIndex + 1}/${numChunks} to S3: ${chunk.chunkKey}`);
+
+            await s3Client.putObject({
+                Bucket: process.env.AWS_S3_BUCKET,
+                Key: chunk.chunkKey,
+                Body: chunk.buffer,
+                Metadata: metaData,
+            }).promise();
+
+            return {
+                chunkIndex: chunk.chunkIndex,
+                chunkKey: chunk.chunkKey,
+                pageRange: { from: chunk.fromPageNumber, to: chunk.toPageNumber }
+            };
+        } catch (error) {
+            console.error(`Error uploading chunk ${chunk.chunkIndex + 1} to S3:`, error);
+            throw error;
+        }
+    })
+
+    let uploadedChunks;
+    try {
+        uploadedChunks = await Promise.all(uploadPromises);
+        console.log(`Successfully uploaded all ${uploadedChunks.length} chunks to S3`);
+    } catch (error) {
+        console.error(`Failed during S3 upload phase:`, error);
+
+        console.log(`Attempting to clean up any uploaded chunks...`);
+
+        const cleanupPromises = splitResults.map(chunk =>
+            s3Client.deleteObject({
+                Bucket: process.env.AWS_S3_BUCKET,
+                Key: chunk.chunkKey
+            }).promise().catch(e => console.warn(`Failed to delete ${chunk.chunkKey}:`, e))
+        );
+
+        await Promise.allSettled(cleanupPromises);
+        throw error;
+    }
+
+     // STEP 3 process with textract
+    console.log(`STEP 3: Processing all ${uploadedChunks.length} chunks with Textract in parallel`);
+
+    const textractPromises = uploadedChunks.map(async (chunk) => {
+        try {
+            console.log(`Processing chunk ${chunk.chunkIndex + 1}/${numChunks} with Textract: pages ${chunk.pageRange.from}-${chunk.pageRange.to}`);
+
+            const jobID = await startTextractJob(textractClient, chunk.chunkKey);
+            console.log(`Started Textract job ${jobID} for chunk ${chunk.chunkIndex + 1}`);
+
+            await isTextractJobComplete(textractClient, jobID);
+            console.log(`Textract job ${jobID} completed for chunk ${chunk.chunkIndex + 1}`);
+
+            const textractResult = await getTextractJobResults(textractClient, jobID);
+
+            await s3Client.deleteObject({
+                Bucket: process.env.AWS_S3_BUCKET,
+                Key: chunk.chunkKey
+            }).promise();
+            console.log(`Cleaned up S3 chunk ${chunk.chunkIndex + 1}: ${chunk.chunkKey}`);
+
+            return {
+                pageCount: chunk.pageRange.to - chunk.pageRange.from + 1,
+                pageRange: chunk.pageRange,
+                textractResult
+            };
+        } catch (error) {
+            console.error(`Error processing chunk ${chunk.chunkIndex + 1} with Textract:`, error);
+
+            try {
+                await s3Client.deleteObject({
+                    Bucket: process.env.AWS_S3_BUCKET,
+                    Key: chunk.chunkKey
+                }).promise();
+                console.log(`Cleaned up failed S3 chunk: ${chunk.chunkKey}`);
+            } catch (cleanupError) {
+                console.warn(`Warning: Failed to clean up S3 chunk: ${chunk.chunkKey}`, cleanupError);
+            }
+
+            throw error;
+        }
+    });
+
+    try {
+        const textractResults = await Promise.all(textractPromises);
+        console.log(`Successfully processed all ${textractResults.length} chunks with Textract`);
+
+        const combinedTextractResults = textractResults.flatMap(textract => 
+            textract.textractResult.map(element => ({
+                pageNumber: element.pageNumber + textract.pageRange.from - 1,
+                text: element.text
+            }))
+        )
+
+        return combinedTextractResults;
+    } catch (error) {
+        console.error(`Failed during Textract processing phase:`, error);
+
+        console.log(`Attempting to clean up any remaining chunks...`);
+
+        const cleanupPromises = uploadedChunks.map(chunk =>
+            s3Client.deleteObject({
+                Bucket: process.env.AWS_S3_BUCKET,
+                Key: chunk.chunkKey
+            }).promise().catch(e => console.warn(`Failed to delete ${chunk.chunkKey}:`, e))
+        );
+
+        await Promise.allSettled(cleanupPromises);
+        throw error;
+    }
+
 }
 
 
@@ -519,8 +621,7 @@ const policeReportPDF = async (s3FilePath, liability, exhibitDirectoryName, case
         let imageTextValue = '';
         for (let i = 0; i < data.length; i++) {
             let extractedText = data[i].text.join(' ');
-            const filtered = await filterPersonalInfo(extractedText, liability);
-            imageTextValue += filtered;
+            imageTextValue += extractedText;
         }
 
         // Update database with paths
@@ -605,7 +706,7 @@ const convertPDFToImages = async (s3FilePath, liability, exhibitDirectoryName, c
         const imageTextValue = await Promise.all(
             data.map(async (item) => {
                 const extractedText = item.text.join(' ');
-                return filterPersonalInfo(extractedText, liability);
+                return extractedText
             })
         );
 
@@ -626,82 +727,82 @@ const convertPDFToImages = async (s3FilePath, liability, exhibitDirectoryName, c
     }
 };
 
-const filterPersonalInfo = async (subjective, liability) => {
-    const name = liability ? liability.name : "";
-    const email = liability ? liability.email : "";
-    const phonePattern =
-        /(\+\d{1,2}\s?)?(\d{3}[-.\s]?\d{3}[-.\s]?\d{4}|\(\d{3}\)\s?\d{3}[-.\s]?\d{4})\b/g;
-    const faxPattern =
-        /^(\+\d{1,3}\s?)?(\(\d{1,4}\)|\d{1,4})[-.\s]?\d{1,10}[-.\s]?\d{1,10}$/g;
+// const filterPersonalInfo = async (subjective, liability) => {
+//     const name = liability ? liability.name : "";
+//     const email = liability ? liability.email : "";
+//     const phonePattern =
+//         /(\+\d{1,2}\s?)?(\d{3}[-.\s]?\d{3}[-.\s]?\d{4}|\(\d{3}\)\s?\d{3}[-.\s]?\d{4})\b/g;
+//     const faxPattern =
+//         /^(\+\d{1,3}\s?)?(\(\d{1,4}\)|\d{1,4})[-.\s]?\d{1,10}[-.\s]?\d{1,10}$/g;
 
-    const findName = subjective.includes(name);
-    if (findName) {
-        subjective = subjective.replace(name, "NAME_PLACEHOLDER");
-    }
+//     const findName = subjective.includes(name);
+//     if (findName) {
+//         subjective = subjective.replace(name, "NAME_PLACEHOLDER");
+//     }
 
-    if (name) {
-        const upperCase = name.toLocaleUpperCase();
-        if (upperCase) {
-            subjective = subjective.replace(upperCase, "NAME_PLACEHOLDER");
-        }
-    }
+//     if (name) {
+//         const upperCase = name.toLocaleUpperCase();
+//         if (upperCase) {
+//             subjective = subjective.replace(upperCase, "NAME_PLACEHOLDER");
+//         }
+//     }
 
-    const findEmail = subjective.includes(email);
-    if (findEmail) {
-        subjective = subjective.replace(email, "EMAIL_PLACEHOLDER");
-    }
+//     const findEmail = subjective.includes(email);
+//     if (findEmail) {
+//         subjective = subjective.replace(email, "EMAIL_PLACEHOLDER");
+//     }
 
-    subjective = subjective.replace(faxPattern, "FAX_PLACEHOLDER");
+//     subjective = subjective.replace(faxPattern, "FAX_PLACEHOLDER");
 
-    subjective = subjective.replace(phonePattern, "PHONENUMBER_PLACEHOLDER");
+//     subjective = subjective.replace(phonePattern, "PHONENUMBER_PLACEHOLDER");
 
-    const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
-    const dobPattern =
-        /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}/g;
-    const DOB =
-        /(DATE|DATO) OF BIRTH:\s*(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}/g;
-    const dateOfBirth =
-        /DOB:\s*(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}/g;
-    const dateOfBirth1 =
-        /DOB\s*(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}/g;
-    const dateOfBirth2 =
-        /Date of Birth:\s*(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}/g;
-    const DOB1 = /Dato of Birth:\s*(.*)/g;
-    const datePattern1 = /,\d{2}\/\d{2}\/\d{4}\s\d{2}:\d{2}/g;
-    const datePattern =
-        /D:,(0[1-9]|1[0-2])\/(0[1-9]|1[0-9]|2[0-9]|3[0-1])\/\d{2},T:,(0[1-9]|1[0-2])\/(0[1-9]|1[0-9]|2[0-9]|3[0-1])\/\d{2}/g;
+//     const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
+//     const dobPattern =
+//         /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}/g;
+//     const DOB =
+//         /(DATE|DATO) OF BIRTH:\s*(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}/g;
+//     const dateOfBirth =
+//         /DOB:\s*(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}/g;
+//     const dateOfBirth1 =
+//         /DOB\s*(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}/g;
+//     const dateOfBirth2 =
+//         /Date of Birth:\s*(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}/g;
+//     const DOB1 = /Dato of Birth:\s*(.*)/g;
+//     const datePattern1 = /,\d{2}\/\d{2}\/\d{4}\s\d{2}:\d{2}/g;
+//     const datePattern =
+//         /D:,(0[1-9]|1[0-2])\/(0[1-9]|1[0-9]|2[0-9]|3[0-1])\/\d{2},T:,(0[1-9]|1[0-2])\/(0[1-9]|1[0-9]|2[0-9]|3[0-1])\/\d{2}/g;
 
-    subjective = subjective.replace(DOB1, "[_DOB]");
-    subjective = subjective.replace(dateOfBirth2, "[_DOB]");
-    subjective = subjective.replace(dobPattern, "[_DOB]");
-    subjective = subjective.replace(DOB, "[_DOB]");
-    subjective = subjective.replace(dateOfBirth1, "[_DOB]");
-    subjective = subjective.replace(dateOfBirth, "[_DOB]");
-    subjective = subjective.replace(datePattern1, "[Date_pattern]");
-    subjective = subjective.replace(datePattern, "[Date_pattern1]");
+//     subjective = subjective.replace(DOB1, "[_DOB]");
+//     subjective = subjective.replace(dateOfBirth2, "[_DOB]");
+//     subjective = subjective.replace(dobPattern, "[_DOB]");
+//     subjective = subjective.replace(DOB, "[_DOB]");
+//     subjective = subjective.replace(dateOfBirth1, "[_DOB]");
+//     subjective = subjective.replace(dateOfBirth, "[_DOB]");
+//     subjective = subjective.replace(datePattern1, "[Date_pattern]");
+//     subjective = subjective.replace(datePattern, "[Date_pattern1]");
 
-    // subjective = subjective.replace(namePattern, '[_NAME]');
-    // subjective = subjective.replace(paientName3, '[_NAME]');
-    // subjective = subjective.replace(patient3, '[_NAME]');
-    // subjective = subjective.replace(patient1, '[_PATIENT_NAME]')
-    // subjective = subjective.replace(phone1, '[_PHONE]')
-    // subjective = subjective.replace(phone2, '[_PHONE]')
-    // subjective = subjective.replace(patient2, '[_PATIENT_NAME]')
-    // subjective = subjective.replace(patient4, '[_PATIENT_NAME]')
-    // subjective = subjective.replace(patient5, '[_PATIENT_NAME]')
-    // subjective = subjective.replace(patientName1, '[_PATIENT_NAME]')
-    // subjective = subjective.replace(emailPattern, '[_EMAIL]');
-    // subjective = subjective.replace(phonePattern, '[_PHONE]');
-    // subjective = subjective.replace(patientName, '[_PATIENT_NAME]');
-    // subjective = subjective.replace(addressPattern, '[_ADDRESS]')
-    // subjective = subjective.replace(pationtName, '[_NAME]')
-    // subjective = subjective.replace(doctorAddressPattern, '[_DOCADDRESS]')
-    //
-    // subjective = subjective.replace(mr, '[_NAME]');
-    // subjective = subjective.replace(mrs, '[_NAME]');
+//     // subjective = subjective.replace(namePattern, '[_NAME]');
+//     // subjective = subjective.replace(paientName3, '[_NAME]');
+//     // subjective = subjective.replace(patient3, '[_NAME]');
+//     // subjective = subjective.replace(patient1, '[_PATIENT_NAME]')
+//     // subjective = subjective.replace(phone1, '[_PHONE]')
+//     // subjective = subjective.replace(phone2, '[_PHONE]')
+//     // subjective = subjective.replace(patient2, '[_PATIENT_NAME]')
+//     // subjective = subjective.replace(patient4, '[_PATIENT_NAME]')
+//     // subjective = subjective.replace(patient5, '[_PATIENT_NAME]')
+//     // subjective = subjective.replace(patientName1, '[_PATIENT_NAME]')
+//     // subjective = subjective.replace(emailPattern, '[_EMAIL]');
+//     // subjective = subjective.replace(phonePattern, '[_PHONE]');
+//     // subjective = subjective.replace(patientName, '[_PATIENT_NAME]');
+//     // subjective = subjective.replace(addressPattern, '[_ADDRESS]')
+//     // subjective = subjective.replace(pationtName, '[_NAME]')
+//     // subjective = subjective.replace(doctorAddressPattern, '[_DOCADDRESS]')
+//     //
+//     // subjective = subjective.replace(mr, '[_NAME]');
+//     // subjective = subjective.replace(mrs, '[_NAME]');
 
-    return subjective.trim();
-};
+//     return subjective.trim();
+// };
 
 const getTextAndExhibit = async (s3FilePath, liability, exhibitDirectoryName, caseId, domainName) => {
     try {
@@ -711,8 +812,7 @@ const getTextAndExhibit = async (s3FilePath, liability, exhibitDirectoryName, ca
         let imageTextValue = '';
         for (let i = 0; i < data.length; i++) {
             let extractedText = data[i].text.join(' ');
-            const filtered = await filterPersonalInfo(extractedText, liability);
-            imageTextValue += filtered;
+            imageTextValue += extractedText;
         }
 
         try {
@@ -741,6 +841,35 @@ const getTextAndExhibit = async (s3FilePath, liability, exhibitDirectoryName, ca
     }
 };
 
+const medicalExpensePDF = async (s3FilePath, damage, exhibitDirectoryName, caseId, domainName, fileIndex) => {
+    try {
+        const [{ awsExhibitPaths, combinedTextractResults: data }] = await Promise.all([
+            pageNumber(s3FilePath, exhibitDirectoryName, fileIndex)
+        ]);
+
+
+        let imageTextValue = '';
+        for (let i = 0; i < data.length; i++) {
+            let extractedText = data[i].text.join(' ');
+            imageTextValue += extractedText;
+        }
+
+        // Update database with paths
+        const filterAwsExhibitPaths = awsExhibitPaths.map(fileObj => fileObj.Key);
+        const DbConnect = mongoose.connection.useDb(domainName);
+        const CaseModal = DbConnect.model("cases", CaseSchema);
+        await CaseModal.findByIdAndUpdate(caseId, {
+            [`result.${exhibitDirectoryName}`]: filterAwsExhibitPaths
+        });
+
+        // Return just the text
+        return imageTextValue;
+    } catch (error) {
+        console.log(error);
+        return '';
+    }
+};
+
 module.exports = {
     policeReportPDF,
     convertPDFToImages,
@@ -748,5 +877,7 @@ module.exports = {
     splitPdf,
     robustCountPdfPages,
     isTextractJobComplete,
-    pageNumber
+    pageNumber,
+    textractPdfFile,
+    medicalExpensePDF,
 };

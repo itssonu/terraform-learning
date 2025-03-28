@@ -54,7 +54,9 @@ const generateMedicalTreatment = async (caseId, domainName, consolidatedTexts) =
         They initiated a treatment program consisting of LIST OF EXAMPLE TREATMENTS that she participated in over the following months."
       10. A SOAP note is a structured method for documenting patient care in healthcare. SOAP stands for Subjective, Objective, Assessment, and Plan. Please follow the SOAP standard while writing these paragraphs
       11. Write in the third person
-      12. For the sake of the outline produce a JSON object with the following format:
+      12. Make sure to have at least one section for each medical provider in the medical records
+      13. Make sure to include dates and doctor's names for all major procedures, treatments, and surgeries
+      14. For the sake of the outline produce a JSON object with the following format:
       [
         {
           "section_title": "TITLE OF SECTION OF TEXT",
@@ -81,10 +83,6 @@ const generateMedicalTreatment = async (caseId, domainName, consolidatedTexts) =
   <case_details>
   ${JSON.stringify(userData, null, 2)}
   </case_details>
-
-  <pain_and_suffering>
-  ${JSON.stringify(painAndSufferingReport, null, 2)}
-  </pain_and_suffering>
   
   Here is a structured object describing the totality of their records:
   <medical_records>
@@ -93,7 +91,7 @@ const generateMedicalTreatment = async (caseId, domainName, consolidatedTexts) =
 
   Additionally, an outline has been created to guide the creation of a medical treatment section for a demand letter.
   <outline>
-  ${outlineOutput}
+  ${JSON.stringify(outlineOutput, null, 2)}
   </outline>
 
   Use the medical_records, summary_texts, outline, and rough draft to generate a medical treatment section of a demand letter, describing the patient's medical treatment since the accident.
@@ -114,6 +112,7 @@ const generateMedicalTreatment = async (caseId, domainName, consolidatedTexts) =
       10. The response to this prompt will be directly included in the demand letter, do not include any notes or prompts for the user. ONLY OUTPUT THE ACTUAL CHRONOLOGICAL SUMMARY PARAGRAPHS
       11. A SOAP note is a structured method for documenting patient care in healthcare. SOAP stands for Subjective, Objective, Assessment, and Plan. Please follow the SOAP standard while writing these paragraphs
       12. Write in the third person
+      13. Make sure to include dates and doctor's names for all major procedures, treatments, and surgeries
   </instructions>
 
   Return a result without any additional explanation or analysis.
@@ -124,7 +123,9 @@ const generateMedicalTreatment = async (caseId, domainName, consolidatedTexts) =
   `
 
   console.log("Generating final medical treatment section")
+  //console.log("full prompt is: ", fifthPassPrompt)
   let fifthPassOutput = await processAi({content: fifthPassPrompt, thinking: true});
+  //console.log("Final medical treatment is: ", fifthPassOutput)
 
   let simplifiedTreatmentPrompt = `Take the following key medical treatment section from a demand letter and produce a 3-4 paragraph executive summary of the content for a lawyer to quickly review the key facts of the medical treatment.
   <medical_treatment_section>
@@ -174,7 +175,7 @@ const generatePreMedicalTreatment = async (caseId, domainName, consolidatedTexts
 
   let fifthPassPrompt = `The following is a set of texts, data, and an outline that describe a series of pre medical records for a person prior to being involved in a personal injury lawsuit. 
   
-  Now, review the case details and pain and suffering information to understand the context:
+  Now, review the case details and medical records to understand the context:
   <case_details>
   ${JSON.stringify(userData, null, 2)}
   </case_details>
@@ -184,7 +185,7 @@ const generatePreMedicalTreatment = async (caseId, domainName, consolidatedTexts
   ${JSON.stringify(updatedMedicalRecords, null, 2)}
   </medical_records>
 
-  Use the records to generate a prior medical treatment section of a demand letter, describing the patient's unrealated medical treatment prior the accident.
+  Use the records to generate a prior medical treatment section of a demand letter, describing the patient's medical treatment prior the accident.
   <instructions>
       1. All bullet points should start with "•"
       2. Only include a single level of bullet points.
@@ -196,7 +197,9 @@ const generatePreMedicalTreatment = async (caseId, domainName, consolidatedTexts
   Return a result without any additional explanation or analysis.
   Remember, this summary will be directly included in the demand letter, so maintain a professional and objective tone throughout from the injured person's view.
 
-  Write the medical treatment summary without a title or comments:
+  Write the medical treatment summary without a title, outline section titles, markdown or comments, just the text paragraphs of the section itself:
+  
+  
   # MEDICAL TREATMENT SUMMARY
   `
 

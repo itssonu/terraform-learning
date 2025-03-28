@@ -89,9 +89,9 @@ const processFilesTotalRequest = async (chunkSize, subjective) => {
 }
 
 const processAi = async ({content, jsonValidator = null, model_temperature = 0, max_output_tokens = 64000, model_id = "claude-3-7-sonnet-20250219", thinking = false}) => {
-    const retries = 20;
+    const retries = 50;
     const delay = 1000;
-    const rateLimitDelay = 4000
+    const rateLimitDelay = 1000
     const timeout = 1000000;
 
     let rateLimitRetries = 0
@@ -109,17 +109,20 @@ const processAi = async ({content, jsonValidator = null, model_temperature = 0, 
                 content += "\n\nCRITICAL: Your response MUST be a raw JSON object WITHOUT any markdown formatting. DO NOT include backticks (`) or code block indicators (```json). Return ONLY the raw JSON object starting with { and ending with }.";
             }
 
-            if (attempt > 0) {
-                console.log(`Retry attempt ${attempt + 1} for LLM call`);
-                console.log(`JSON Format Retry attempt ${jsonfailcount} for LLM call`);
+            // if (attempt > 0) {
+            //     //console.log(`Retry attempt ${attempt + 1} for LLM call`);
+            //     //console.log(`JSON Format Retry attempt ${jsonfailcount} for LLM call`);
+            // }
+
+            if (jsonValidator && jsonfailed) {
+                jsonfailcount = jsonfailcount + 1;
             }
 
             // Add feedback for JSON validation if it's not the first attempt
-            if (attempt > 0 && attempt < 3 && jsonValidator && jsonfailed) {
+            if (attempt === 1 && jsonValidator && jsonfailed) {
                 content = content + `
                 LLM RESPONSE:
                 ` + previouscontent + "\n\nERROR: The previous response included markdown formatting with backticks. DO NOT include any backticks (`) or code block indicators (```json). Your response must be ONLY the raw JSON object starting with { and ending with }.";
-                jsonfailcount = jsonfailcount + 1;
             }
 
             let converseInput = {};
@@ -142,6 +145,8 @@ const processAi = async ({content, jsonValidator = null, model_temperature = 0, 
                     budget_tokens: parseInt(max_output_tokens/2)
                 };
             }
+
+            await sleep(10 * Math.random()); //randomly spread out many parallel requests over 10 seconds
 
             let result = await anthropicClient.messages.create(converseInput);
             let data = result?.content?.at(-1)?.text || "No-Data";
@@ -167,7 +172,7 @@ const processAi = async ({content, jsonValidator = null, model_temperature = 0, 
 
             return data;
         } catch (error) {
-            console.log(`Error in ProcessAi (attempt ${attempt + rateLimitRetries + 1}):`, error);
+            //console.log(`Error in ProcessAi (attempt ${attempt + rateLimitRetries + 1}):`, error);
             
             // Safer rate limit detection
             const isRateLimit = 
@@ -182,7 +187,7 @@ const processAi = async ({content, jsonValidator = null, model_temperature = 0, 
             }
             
             if (isRateLimit) {
-                console.log("Rate limit detected, waiting before retry without incrementing attempt count");
+                //console.log("Rate limit detected, waiting before retry without incrementing attempt count");
                 rateLimitRetries++;
                 await sleep(rateLimitDelay * Math.random() * Math.pow(rateLimitRetries, 2));
             } else {

@@ -6,14 +6,14 @@ const BaseController = require("./BaseController")
 
 const getCompaniesAnalytics = async (req, res, next) => {
     try {
-        const { from, to, limit = 10 } = req.body;
+        const { from, to, limit = 10, selectedRange } = req.body;
         const db = useDB()
         const CompaniesModel = db.model("companies", CompaniesSchema);
         const companies = await CompaniesModel.find({}).lean();
 
         const caseCountPromises = companies.map(async (company) => {
             const DBName = getDBName({ domainName: company.domainName })
-            const { totalCases, averageTimeTaken } = await countCases({ DBName, from, to });
+            const { totalCases, averageTimeTaken } = await countCases({ DBName, selectedRange });
 
             return { totalCases, averageTimeTaken, companyName: company.companyName, domainName: company.domainName };
         });

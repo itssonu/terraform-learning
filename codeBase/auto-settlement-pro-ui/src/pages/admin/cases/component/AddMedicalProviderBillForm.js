@@ -27,6 +27,10 @@ import { confirm } from '../../../../utils/swal';
 import { RedesignedFileUpload } from '../../../../components';
 import { handleEnterKeyPress } from "../../../../utils/handleEnterKey";
 import FileUploadErrorModal from '../../../../utils/fileUploadErrorModal';
+import Constants from '../../../../Constants';
+import useAxios from "../../../../hooks/useAxios";
+import { toaster } from "../../../../utils/toast";
+import { DEMAND } from "../../../../utils/enum";
 import { ReactComponent as EditIcon } from '../../../../assets/icons/EditIcon.svg';
 import { ReactComponent as RemoveIcon } from '../../../../assets/icons/RemoveIcon.svg';
 import { ReactComponent as MoveIcon } from '../../../../assets/icons/MoveIcon.svg';
@@ -202,7 +206,7 @@ const AddMedicalProviderBillForm = ({ onSubmit, stepDecrement, backToCases, inne
     const medicalProviderData = useSelector(state => state.medicalProviderData.medicalProvider);
     const proccessedMedicalRecordsStored = useSelector(state => state.preProcessMedicalRecords.injuryData);
     const summaryLoadingPercentage = useSelector(state => state.preProcessMedicalRecords.summaryLoadingPercentage);
-
+    const { postData, deleteData } = useAxios()
     useEffect(() => {
         dispatch(formikRefCapture(innerRef))
         console.log('Damages', innerRef)
@@ -497,7 +501,23 @@ const AddMedicalProviderBillForm = ({ onSubmit, stepDecrement, backToCases, inne
 
     const groupedBillData = getMedicalBillData(proccessedMedicalRecordsStored?.preMedicalBillProccessedData)
 
-    console.log("groupedBillData: ", groupedBillData)
+    const downloadDemandDraft = async ({ caseId, caseName, typeOfDemandDraft }) => {
+
+        if (!typeOfDemandDraft) {
+            toaster({ message: 'Please select Type of Demand', success: false });
+        }
+        const { success, data, message } = await postData(Constants.ApiUrl.generate, { caseId, typeOfDemandDraft });
+        if (success) {
+            const { wordUrl } = data;
+            let link = document.createElement("a");
+            link.download = `${caseName}-${typeOfDemandDraft}.docx`
+            link.href = wordUrl;
+            link.click();
+            toaster({ message: "File downloaded successfully", success: true });
+        } else {
+            toaster({ message, success });
+        }
+    }
 
     return (
         <>
@@ -844,9 +864,9 @@ const AddMedicalProviderBillForm = ({ onSubmit, stepDecrement, backToCases, inne
                                                 onClick={(e) => onFormikSubmitHandler(values, true)}
                                             >
                                                 <span class="me-2">
-                                                {proccessedMedicalRecordsStored?.isPreProcessRecordLoading ?
-                                                    <div className="medical-summary-spinner"></div>
-                                                    : <MedicalSummaryButtonIcon />}
+                                                    {proccessedMedicalRecordsStored?.isPreProcessRecordLoading ?
+                                                        <div className="medical-summary-spinner"></div>
+                                                        : <MedicalSummaryButtonIcon />}
                                                 </span>
                                                 {isMedicalRecordsGeneratedPreviously ? "Regenerate" : "Generate Medical Summary"}
                                             </button>
@@ -1156,8 +1176,9 @@ const AddMedicalProviderBillForm = ({ onSubmit, stepDecrement, backToCases, inne
                                         ))}
                                     </div>
                                 </RenderIf>
-                                <div className="col-md-12 mt-5 mb-10">
-                                    <RenderIf shouldRender={groupedBillData?.length}>
+                                <RenderIf shouldRender={groupedBillData?.length}>
+                                    <div className="col-md-12 mt-5 mb-10">
+
                                         <h6 class="mb-2">Medical Bill Records</h6>
                                         <div class="modal-scroll"
                                         >
@@ -1183,9 +1204,18 @@ const AddMedicalProviderBillForm = ({ onSubmit, stepDecrement, backToCases, inne
                                                 </tbody>
                                             </table>
                                         </div>
-                                    </RenderIf>
-                                </div>
+                                    </div>
+                                </RenderIf>
                             </div>
+                            <div className="modal-footer">
+                                <button onClick={closeMedicalSummaryRecordModel} type="button" className="btn btn-theme btn-border">
+                                    Cancel
+                                </button>
+                                <button type="button" onClick={() => { downloadDemandDraft({ caseId, caseName: '', typeOfDemandDraft: DEMAND.Medical_Chronology }) }} className="btn btn-theme">
+                                    Download
+                                </button>
+                            </div>
+
                         </div>
                     </div>
                 </div>

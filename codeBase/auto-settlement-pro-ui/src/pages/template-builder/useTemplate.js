@@ -328,7 +328,6 @@ const useTemplate = () => {
     const onChangeFontSize = (e) => {
         e.preventDefault();
         const value = e.target.value
-        setFontFamily(value);
         const payload = { fontSize: value }
         addUpdateCommonTemplate(payload)
     }
@@ -336,7 +335,6 @@ const useTemplate = () => {
     const onChangeTextAlign = (e) => {
         e.preventDefault();
         const value = e.target.value
-        setFontFamily(value);
         const payload = { textAlign: value }
         addUpdateCommonTemplate(payload)
     }

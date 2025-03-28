@@ -15,7 +15,8 @@ export const fontFamilyOptions = [
   { key: "sans-serif", value: "sans-serif", text: "Sans Serif" },
   { key: "serif", value: "serif", text: "Serif" },
   { key: "monospace", value: "monospace", text: "Monospace" },
-  { key: "arial", value: "arial", text: "Arial" }
+  { key: "arial", value: "arial", text: "Arial" },
+  { key: "Poppins", value: "Poppins", text: "Poppins" }
 ]
 
 export const fontSizeOptions = [

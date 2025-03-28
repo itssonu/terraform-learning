@@ -462,43 +462,99 @@ const getMedicalProviderNames = async (content, updatedCompleteRequest, socketSe
     
         // Flatten the results array
         const allTreatmentDates = chunkResults.flat();
-    
-        // If no treatment dates found, create an empty array
-        let treatmentDates = [];
         
-        if (allTreatmentDates.length > 0) {
-            // Define a prompt to combine and deduplicate the results
-            const combinationPrompt = `You are a medical analysis assistant. 
-            I have processed multiple chunks of a medical record and extracted treatment dates and descriptions.
-            Now I need you to combine these results, removing duplicates and merging information when the same date appears multiple times.
+        // Group treatment dates by date
+        const groupedByDate = {};
+        allTreatmentDates.forEach(item => {
+            if (!groupedByDate[item.date]) {
+                groupedByDate[item.date] = {
+                    date: item.date,
+                    descriptions: [],
+                    pageNumbers: []
+                };
+            }
+            groupedByDate[item.date].descriptions.push(item.treatmentDescription);
+            groupedByDate[item.date].pageNumbers.push(item.pageNumber);
+        });
+        
+        // Process each date group to combine descriptions
+        const combinedTreatmentDates = [];
+        const dateKeys = Object.keys(groupedByDate).sort(); // Sort dates
+        
+        console.log(`Processing ${dateKeys.length} unique treatment dates`);
+        
+        const dateProcessingPromises = dateKeys.map(async (dateKey) => {
+            const dateGroup = groupedByDate[dateKey];
+            let combinedDescription;
             
-            Here are the extracted treatment dates:
-            ${JSON.stringify(allTreatmentDates, null, 2)}
-            
-            Please provide a JSON object with the following structure:
-            {
-                "treatmentDates": [
-                    {"date": "MM/DD/YYYY", "treatmentDescription": "combined description...", "pageNumber": N}
-                ]
+            // If we have too many descriptions for a single date, summarize only the first 50
+            if (dateGroup.descriptions.length > 50) {
+                console.log(`Date ${dateKey} has ${dateGroup.descriptions.length} descriptions, truncating to first 50`);
+                const descriptionsToProcess = dateGroup.descriptions.slice(0, 50);
+                
+                const summarizationPrompt = `
+                You are summarizing multiple medical treatment descriptions from the same date (${dateKey}).
+                There are ${dateGroup.descriptions.length} total descriptions, but I'm providing the first 50 for you to summarize.
+                Please create a single comprehensive treatment description that captures all the key information without repetition.
+                
+                Descriptions to summarize:
+                ${JSON.stringify(descriptionsToProcess)}
+                
+                Provide only the summarized description without any additional text or explanation.
+                `;
+                
+                combinedDescription = await processAi({content: summarizationPrompt});
+                combinedDescription += ` (Note: This is a summary of ${dateGroup.descriptions.length} treatment entries from this date)`;
+            } 
+            // If we have a manageable number but more than 1, summarize them
+            else if (dateGroup.descriptions.length > 1) {
+                console.log(`Date ${dateKey} has ${dateGroup.descriptions.length} descriptions, summarizing`);
+                
+                const summarizationPrompt = `
+                You are summarizing multiple medical treatment descriptions from the same date (${dateKey}).
+                Please create a single comprehensive treatment description that captures all the key information without repetition.
+                
+                Descriptions to summarize:
+                ${JSON.stringify(dateGroup.descriptions)}
+                
+                Provide only the summarized description without any additional text or explanation.
+                `;
+                
+                combinedDescription = await processAi({content: summarizationPrompt});
+            } 
+            // If we only have one description, use it directly
+            else {
+                combinedDescription = dateGroup.descriptions[0];
             }
             
-            Follow these rules:
-            1. If the same date appears multiple times, combine the descriptions intelligently to avoid repetition
-            2. Sort the treatmentDates array by date
-            3. For dates that appear in multiple chunks, use the earliest page number
-            4. Ensure treatment descriptions are comprehensive but not repetitive
-            5. If a description is repetitive, summarize it.
+            // Find the earliest page number for this date
+            const earliestPageNumber = Math.min(...dateGroup.pageNumbers);
             
-            Provide Only JSON data without any additional text or explanation.`;
-    
-            // Process the combination
-            console.log("Combining and deduplicating treatment dates");
-            const combinedResponse = await processAi({content: combinationPrompt, thinking: true, jsonValidator: true});
-            treatmentDates = JSON.parse(combinedResponse).treatmentDates;
-            console.log("Combined and deduplicated treatment dates");
-        } else {
-            console.log("No treatment dates found in the medical records");
-        }
+            // Return the processed treatment date object
+            return {
+                date: dateKey,
+                treatmentDescription: combinedDescription,
+                pageNumber: earliestPageNumber
+            };
+        });
+        
+        // Wait for all date processing tasks to complete
+        console.log(`Processing ${dateKeys.length} unique treatment dates in parallel`);
+        const processedTreatmentDates = await Promise.all(dateProcessingPromises);
+        console.log(`Completed parallel processing of ${processedTreatmentDates.length} treatment dates`);
+        
+        // Add all processed treatment dates to the combined array
+        combinedTreatmentDates.push(...processedTreatmentDates);
+        
+        console.log(`Combined ${allTreatmentDates.length} treatment entries into ${combinedTreatmentDates.length} unique dates`);
+        
+        // Sort the final treatment dates by date
+        const treatmentDates = combinedTreatmentDates.sort((a, b) => {
+            // Convert MM/DD/YYYY to Date objects for proper comparison
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            return dateA - dateB;
+        });
     
         // Wait for objective findings to complete
         console.log("Waiting for objective findings extraction");
@@ -515,25 +571,47 @@ const getMedicalProviderNames = async (content, updatedCompleteRequest, socketSe
                 medicalTypeName
             });
         } else {
-            //If document applies to a previous provider, we must combine treatmentDates objects and deduplicate dates while preserving information
-            let lastProviderTreatmentDates = providers.at(-1)?.treatmentDates;
-            treatmentDates = [...lastProviderTreatmentDates, ...treatmentDates];
-            const uniqueDatesMap = new Map();
-    
-            treatmentDates.forEach(item => {
-                if (uniqueDatesMap.has(item.date)) {
-                    // If the date already exists, concatenate the descriptions
-                    const existingItem = uniqueDatesMap.get(item.date);
-                    existingItem.treatmentDescription += `, ${item.treatmentDescription}`; 
-                } else {
-                    // If it's a new date, add it to the Map
-                    uniqueDatesMap.set(item.date, { ...item });
-                }
+            // If document applies to a previous provider, merge with existing data
+            let existingProvider = providers.at(-1);
+            
+            // Create a map of existing treatment dates for quick lookup
+            const existingDatesMap = new Map();
+            existingProvider.treatmentDates.forEach(item => {
+                existingDatesMap.set(item.date, item);
             });
-            // Convert the Map back to an array
-            treatmentDates = Array.from(uniqueDatesMap.values());
-            //we should better combine dates from separate documents representing the same provider
-            providers.at(-1).treatmentDates = treatmentDates.sort((a, b) => a.date - b.date);
+            
+            // For each new treatment date, either add it or merge with existing
+            for (const newTreatment of treatmentDates) {
+                if (existingDatesMap.has(newTreatment.date)) {
+                    // Need to merge descriptions for this date
+                    const existingTreatment = existingDatesMap.get(newTreatment.date);
+                    
+                    const mergePrompt = `
+                    You are merging two medical treatment descriptions from the same date (${newTreatment.date}).
+                    Please create a single comprehensive treatment description that captures all the key information without repetition.
+                    
+                    Description 1: ${existingTreatment.treatmentDescription}
+                    
+                    Description 2: ${newTreatment.treatmentDescription}
+                    
+                    Provide only the merged description without any additional text or explanation.
+                    `;
+                    
+                    existingTreatment.treatmentDescription = await processAi({content: mergePrompt});
+                    // Keep the earlier page number
+                    existingTreatment.pageNumber = Math.min(existingTreatment.pageNumber, newTreatment.pageNumber);
+                } else {
+                    // This is a new date, add it to the existing provider
+                    existingProvider.treatmentDates.push(newTreatment);
+                }
+            }
+            
+            // Re-sort the treatment dates
+            existingProvider.treatmentDates.sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                return dateA - dateB;
+            });
         }
         console.log("Done with all other medical records");
     }
@@ -1039,7 +1117,7 @@ const getMedicalProviderNames = async (content, updatedCompleteRequest, socketSe
             "hospitalStays": `Extract all hospital admission and discharge dates from the record. Format dates as MM/DD/YYYY. Include page numbers where dates appear.`,
             "chiefComplaints": `Extract all chief complaints from the hospital record. Connect each with its associated admission date if possible.`,
             "systemReviews": `Extract all review of systems and physical examination details from the record. Include date and page number references.`,
-            "treatmentDetails": `Extract all detailed treatment summaries for medical visits within the hospital stay, including type of visit, primary complaint, and date of each recorded treatment.`,
+            "treatmentDetails": `Extract all detailed treatment summaries for medical visits within the hospital stay, including type of visit, primary complaint, and date of each recorded treatment. Make sure to include all distinct treatments and surgeries.`,
             "diagnoses": `Extract all diagnoses mentioned in the hospital record. Include relevant dates if available.`,
             "planRecommendations": `Extract all plans and recommendations mentioned in the record. Include relevant dates if available.`
         };
@@ -1086,6 +1164,120 @@ const getMedicalProviderNames = async (content, updatedCompleteRequest, socketSe
             extractedData[key] = data;
         });
     
+        // Function to estimate the size of data (approximate token count)
+        function estimateDataSize(data) {
+            const str = JSON.stringify(data);
+            // GPT models typically use ~4 chars per token for English text
+            return Math.ceil(str.length / 4);
+        }
+    
+        // Function to recursively reduce data until it's below max size
+        async function recursivelyReduceData(extractedData, maxTokenSize, depth = 0, maxDepth = 10) {
+            console.log(`Data reduction iteration ${depth}: Checking sizes`);
+            
+            // Prevent infinite recursion
+            if (depth >= maxDepth) {
+                console.warn(`WARNING: Reached maximum recursion depth (${maxDepth}). Some data may still be too large.`);
+                return extractedData;
+            }
+            
+            // Check if any key in extractedData needs reduction
+            let needsReduction = false;
+            const keySizes = {};
+            
+            for (const key in extractedData) {
+                if (!extractedData[key]) continue;
+                const size = estimateDataSize(extractedData[key]);
+                keySizes[key] = size;
+                
+                if (size > maxTokenSize) {
+                    needsReduction = true;
+                }
+            }
+            
+            console.log(`Key sizes:`, keySizes);
+            
+            if (!needsReduction) {
+                console.log("All data is within token limits");
+                return extractedData;
+            }
+            
+            console.log("Some data exceeds token limits, performing reduction");
+            const reducedData = {...extractedData};
+            
+            // Process each key that needs reduction
+            for (const key in reducedData) {
+                if (!reducedData[key] || keySizes[key] <= maxTokenSize) continue;
+                
+                console.log(`Reducing data for key '${key}' (${keySizes[key]} tokens)`);
+                
+                const dataArray = reducedData[key];
+                
+                // Determine chunk size based on how much reduction is needed
+                const chunkSize = Math.max(2, Math.ceil(dataArray.length / Math.ceil(keySizes[key] / maxTokenSize)));
+                console.log(`Using chunk size of ${chunkSize} for ${dataArray.length} items`);
+                
+                // Split array into chunks
+                const chunks = [];
+                for (let i = 0; i < dataArray.length; i += chunkSize) {
+                    chunks.push(dataArray.slice(i, i + chunkSize));
+                }
+                
+                // Process each chunk with AI summarization
+                const reducedChunks = await Promise.all(chunks.map(async (chunk, index) => {
+                    console.log(`Processing chunk ${index+1}/${chunks.length} for key '${key}'`);
+                    
+                    const prompt = `The following are a series of text chunks describing the ${key} of a hospital record.
+                    Each text chunk was generated with the following instrucitons:
+
+                    Use the following instructions to extract data related to the record:
+                    Only extract information from actual medical record text, do not extract treatment dates from medical bills or billing information.
+                    ${extractionPrompts[key]}
+
+                    The following data are notes on different chunks of text from the same hospital record that need to be consolidated into one
+    
+                    Data to consolidate:
+                    ${JSON.stringify(chunk, null, 2)}
+                    
+                    Return the consolidated information preserving all essential medical details, distinct treatments, and surgeries while still following the original chunk instructions: ${extractionPrompts[key]}`;
+                                    
+                    return await processAi({content: prompt});
+                }));
+                
+                // Replace the original data with reduced data
+                reducedData[key] = reducedChunks;
+                
+                const newSize = estimateDataSize(reducedData[key]);
+                console.log(`After reduction: '${key}' size is now ${newSize} tokens (was ${keySizes[key]})`);
+            }
+            
+            // Check if any key still needs reduction
+            let stillNeedsReduction = false;
+            for (const key in reducedData) {
+                if (!reducedData[key]) continue;
+                if (estimateDataSize(reducedData[key]) > maxTokenSize) {
+                    stillNeedsReduction = true;
+                }
+            }
+            
+            // Recursively reduce if needed
+            if (stillNeedsReduction) {
+                console.log(`Some data still exceeds limits. Starting next reduction iteration.`);
+                return await recursivelyReduceData(reducedData, maxTokenSize, depth + 1, maxDepth);
+            }
+            
+            console.log("Data reduction complete. All within token limits.");
+            return reducedData;
+        }
+    
+        // Apply the data reduction step before further processing
+        const maxTokenSize = 32000; // Adjust based on your needs
+        console.log("Starting data reduction process to manage token limits");
+        //console.log("extractedData before: ", JSON.stringify(extractedData, null, 2))
+        extractedData = await recursivelyReduceData(extractedData, maxTokenSize);
+        console.log("Data reduction complete, proceeding with final processing");
+        //console.log("extractedData after: ", JSON.stringify(extractedData, null, 2))
+    
         // Helper functions to process the extracted data into proper format
         async function getHospitalStays(extractedData) {
             const prompt = `Extract and combine all hospital admission and discharge dates from these notes.
@@ -1109,6 +1301,11 @@ const getMedicalProviderNames = async (content, updatedCompleteRequest, socketSe
                 Data: ${JSON.stringify(extractedData, null, 2)}
                 
                 Only output a JSON parsable object mapping admission dates to chief complaints.
+
+                [
+                    "MM/DD/YYYY": "CHIEF COMPLAINT HERE",
+                    ...
+                ]
             `;
             
             const response = await processAi({content: prompt, jsonValidator: true});
@@ -1129,7 +1326,41 @@ const getMedicalProviderNames = async (content, updatedCompleteRequest, socketSe
                 Plan Recommendations: ${JSON.stringify(extractedData.planRecommendations, null, 2)}
                 
                 Only output a JSON parsable object mapping admission dates to treatment summary arrays.
-            `;
+
+                [
+                    "MM/DD/YYYY": 
+                        [
+                            {
+                                "date": "MM/DD/YYYY",        //repetitive but useful for some legacy functions
+                                "typeOfVisit": "",
+                                "visitSummary": "",            //This should use the Treatment Details, if multiple treatments or surgeries are found, each should be explicitly mentioned individually here in detail. This section can be lengthy and should be detailed.
+                                "primaryVisitComplaint": "",
+                                "historyOfPresentIllness": "",        //this field is optional, only include it when found to be relevant to the specific medical visit
+                                "pastMedicalHistory": "",        //this field is optional, only include it when found to be relevant to the specific medical visit
+                                "pastSurgicalHistory": "",        //this field is optional, only include it when found to be relevant to the specific medical visit
+                                "painLevel": "",        //this field is optional, only include it when found to be relevant to the specific medical visit
+                                "goals": "",        //this field is optional, only include it when found to be relevant to the specific medical visit
+                                "assessment": "",        //this field is optional, only include it when found to be relevant to the specific medical visit
+                                "restrictionsPrecautionsForTreatment": "",        //this field is optional, only include it when found to be relevant to the specific medical visit
+                                "priorLevelOfFunction": "",        //this field is optional, only include it when found to be relevant to the specific medical visit
+                                "reviewOfSystemPhysicalExam": "",
+                                "diagnosis": "",
+                                "planRecommendation": "",
+                                "pageNumber": N,
+                                "imageFindings": [""],
+                                "additionalSections": [
+                                    {
+                                        "sectionTitle": "",
+                                        "sectionContent": ""
+                                    }
+                                ]
+                            },
+                        ]
+                    ...
+                ]
+                
+                
+                `;
             
             const response = await processAi({content: prompt, jsonValidator: true});
             return JSON.parse(response);
@@ -1289,6 +1520,120 @@ const getMedicalProviderNames = async (content, updatedCompleteRequest, socketSe
         results.forEach(({ key, data }) => {
             extractedData[key] = data;
         });
+
+        // Function to estimate the size of data (approximate token count)
+        function estimateDataSize(data) {
+            const str = JSON.stringify(data);
+            // GPT models typically use ~4 chars per token for English text
+            return Math.ceil(str.length / 4);
+        }
+    
+        // Function to recursively reduce data until it's below max size
+        async function recursivelyReduceData(extractedData, maxTokenSize, depth = 0, maxDepth = 10) {
+            console.log(`Data reduction iteration ${depth}: Checking sizes`);
+            
+            // Prevent infinite recursion
+            if (depth >= maxDepth) {
+                console.warn(`WARNING: Reached maximum recursion depth (${maxDepth}). Some data may still be too large.`);
+                return extractedData;
+            }
+            
+            // Check if any key in extractedData needs reduction
+            let needsReduction = false;
+            const keySizes = {};
+            
+            for (const key in extractedData) {
+                if (!extractedData[key]) continue;
+                const size = estimateDataSize(extractedData[key]);
+                keySizes[key] = size;
+                
+                if (size > maxTokenSize) {
+                    needsReduction = true;
+                }
+            }
+            
+            console.log(`Key sizes:`, keySizes);
+            
+            if (!needsReduction) {
+                console.log("All data is within token limits");
+                return extractedData;
+            }
+            
+            console.log("Some data exceeds token limits, performing reduction");
+            const reducedData = {...extractedData};
+            
+            // Process each key that needs reduction
+            for (const key in reducedData) {
+                if (!reducedData[key] || keySizes[key] <= maxTokenSize) continue;
+                
+                console.log(`Reducing data for key '${key}' (${keySizes[key]} tokens)`);
+                
+                const dataArray = reducedData[key];
+                
+                // Determine chunk size based on how much reduction is needed
+                const chunkSize = Math.max(2, Math.ceil(dataArray.length / Math.ceil(keySizes[key] / maxTokenSize)));
+                console.log(`Using chunk size of ${chunkSize} for ${dataArray.length} items`);
+                
+                // Split array into chunks
+                const chunks = [];
+                for (let i = 0; i < dataArray.length; i += chunkSize) {
+                    chunks.push(dataArray.slice(i, i + chunkSize));
+                }
+                
+                // Process each chunk with AI summarization
+                const reducedChunks = await Promise.all(chunks.map(async (chunk, index) => {
+                    console.log(`Processing chunk ${index+1}/${chunks.length} for key '${key}'`);
+                    
+                    const prompt = `The following are a series of text chunks describing the ${key} of a hospital record.
+                    Each text chunk was generated with the following instrucitons:
+
+                    Use the following instructions to extract data related to the record:
+                    Only extract information from actual medical record text, do not extract treatment dates from medical bills or billing information.
+                    ${extractionPrompts[key]}
+
+                    The following data are notes on different chunks of text from the same hospital record that need to be consolidated into one
+    
+                    Data to consolidate:
+                    ${JSON.stringify(chunk, null, 2)}
+                    
+                    Return the consolidated information preserving all essential medical details while still following the original chunk instructions: ${extractionPrompts[key]}`;
+                                    
+                    return await processAi({content: prompt});
+                }));
+                
+                // Replace the original data with reduced data
+                reducedData[key] = reducedChunks;
+                
+                const newSize = estimateDataSize(reducedData[key]);
+                console.log(`After reduction: '${key}' size is now ${newSize} tokens (was ${keySizes[key]})`);
+            }
+            
+            // Check if any key still needs reduction
+            let stillNeedsReduction = false;
+            for (const key in reducedData) {
+                if (!reducedData[key]) continue;
+                if (estimateDataSize(reducedData[key]) > maxTokenSize) {
+                    stillNeedsReduction = true;
+                }
+            }
+            
+            // Recursively reduce if needed
+            if (stillNeedsReduction) {
+                console.log(`Some data still exceeds limits. Starting next reduction iteration.`);
+                return await recursivelyReduceData(reducedData, maxTokenSize, depth + 1, maxDepth);
+            }
+            
+            console.log("Data reduction complete. All within token limits.");
+            return reducedData;
+        }
+    
+        // Apply the data reduction step before further processing
+        const maxTokenSize = 32000; // Adjust based on your needs
+        console.log("Starting data reduction process to manage token limits");
+        console.log("extractedData before: ", JSON.stringify(extractedData, null, 2))
+        extractedData = await recursivelyReduceData(extractedData, maxTokenSize);
+        console.log("Data reduction complete, proceeding with final processing");
+        console.log("extractedData after: ", JSON.stringify(extractedData, null, 2))
 
         async function getDiagnoses(extractedData) {
             const diagnosesPrompt = `Take these diagnoses notes from a medical record and present them as a list.

@@ -93,6 +93,7 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
         const medicalExpensesExhibitPaths = caseData.result?.medicalExpensesExhibitPaths || null;
         const lossOfEarningsLLMRes = caseData.result?.lossOfIncomeAnalysis || "";
         const medicalExpensesLLMRes = caseData.result?.medicalExpensesLLM || "";
+        const totalFutureMedicalBillsAmount = caseData.result?.expenseBillsChatGptResponse?.totalFutureMedicalBillsAmount || "";
 
 
         const LLMFactsOfIncident = caseData?.result?.LLMFactsOfIncident || "";
@@ -646,7 +647,8 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                     "[LLMLossIncome]." : lossOfEarningsLLMRes,
                     "[LLMMedicalExpenses]." : medicalExpensesLLMRes, 
                     "[LLMLossIncome]" : lossOfEarningsLLMRes,
-                    "[LLMMedicalExpenses]" : medicalExpensesLLMRes, 
+                    "[LLMMedicalExpenses]" : medicalExpensesLLMRes,
+                    "[totalFutureMedicalBillsAmount]": totalFutureMedicalBillsAmount,
                 };
 
                 let resultText = textData;
@@ -1030,9 +1032,9 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
             let monthsDifference = parseInt(createdDateMoment.diff(accidentDateMoment, 'months', true));
             let month = isNaN(monthsDifference) ? parseInt('0') : monthsDifference
             const pastNonEconomicDamages = pastNoneEconomicsDamagesAmount(claimAmount, month);
-            const perDayAmountForFutureNonEconomicDamages = Math.ceil(parseInt(annualClaimAmount.replace(',', '')) / 365)
-            const postNonEconomicsDamagesFinalAmount = (parseInt(annualClaimAmount.replace(',', '')) * lifeExpectancyAge).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            const perDayPasNonEconomicDamagesAmount = Math.floor(parseInt(claimAmount.replace(',', '')) / 30)
+            const perDayAmountForFutureNonEconomicDamages = Math.ceil(parseInt(annualClaimAmount?.replace(',', '')) / 365)
+            const postNonEconomicsDamagesFinalAmount = (parseInt(annualClaimAmount?.replace(',', '')) * lifeExpectancyAge).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const perDayPasNonEconomicDamagesAmount = Math.floor(parseInt(claimAmount?.replace(',', '')) / 30)
             // console.log('perDayAmount', perDayPasNonEconomicDamagesAmount)
             const perDayPasNonEconomicDamagesFinalAmount = perDayPasNonEconomicDamagesAmount.toLocaleString('en-US');
             const age = userData?.painAndSuffering?.age
@@ -3148,7 +3150,7 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                                         new Paragraph({
                                             alignment: AlignmentType.RIGHT,
                                             children: [new TextRun({
-                                                children: [``],
+                                                children: [`$`],
                                                 size: 24,
 
                                             }),]
@@ -3192,7 +3194,7 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                                         new Paragraph({
                                             alignment: AlignmentType.RIGHT,
                                             children: [new TextRun({
-                                                children: [``],
+                                                children: [`${totalFutureMedicalBillsAmount === 'NaN' ? 0 : totalFutureMedicalBillsAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
                                                 size: 24,
 
                                             }),]
@@ -3329,6 +3331,7 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                             faulterName,
                             medicalRecordsDetailsDoc: medicalRecordsParagraphs,
                             priorMedicalRecordsDetailsDoc: preMedicalRecordsParagraphs,
+                            simplifiedMedicalRecordsDetailsDoc: simplifiedMedicalRecordsParagraphs,
                             executiveSummaryDoc: processedExecutiveSummary,
                             llmLibilityDescriptionDoc,
                             LLMFactsOfIncident,
@@ -3393,7 +3396,8 @@ const createAndSaveSetttlementReportWord = async (domainName, caseId, demand) =>
                             lossOfIncomeExhibitSectionDoc,
                             lossOfEarningsHyperlinkNumber,
                             futureExpenseHyperlinkNumber,
-                            futureExpenseExhibitSectionDoc: medicalExpensesExhibitSectionDoc
+                            futureExpenseExhibitSectionDoc: medicalExpensesExhibitSectionDoc,
+                            totalFutureMedicalBillsAmount,
                         }
                     );
 

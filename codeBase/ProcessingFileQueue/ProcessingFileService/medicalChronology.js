@@ -53,16 +53,17 @@ const createMedicalChronology = async (domainName, caseId, demand) => {
     const userId = caseData?.userId || null;
     const victimName = caseData?.detailsInput?.caseInfo?.caseName || "";
     const userData = caseData?.detailsInput || "";
+    //console.log('user data data dta',userData)
     const createDate = caseData?.createdOn || "";
     const medicalRecords = caseData?.result?.medicalRecords || [];
     const preMedicalRecords = caseData?.result?.preMedicalRecords || [];
     const gender = userData?.painAndSuffering?.gender;
     const createdDate = moment(createDate).format('MMMM D, YYYY');
-    const claimAmount = userData.painAndSuffering?.monthlyamount.split('.')[0]
-    const annualClaimAmount = userData.painAndSuffering?.annualamount.split('.')[0]
-    const clientProfession = userData.damage?.typeofWork;
-    const hourlyIncomeRate = userData.damage?.hourlyIncomeRate;
-    const workHourMissed = userData.damage?.WorkHoursMissed;
+    const claimAmount = userData?.painAndSuffering?.monthlyamount?.split('.')[0]
+    const annualClaimAmount = userData?.painAndSuffering?.annualamount?.split('.')[0]
+    const clientProfession = userData?.damage?.typeofWork;
+    const hourlyIncomeRate = userData?.damage?.hourlyIncomeRate;
+    const workHourMissed = userData?.damage?.WorkHoursMissed;
     let clientName = gender === "Male" ? `Mr. ${userData?.caseInfo?.clientName?.trim().split(" ").at(-1)}` : `Ms. ${userData?.caseInfo?.clientName?.trim().split(" ").at(-1)}`
     let clientFullName = `${userData?.caseInfo?.clientName}`
     const faulterName = `${userData?.caseInfo?.defendantName}`
@@ -547,6 +548,14 @@ const createMedicalChronology = async (domainName, caseId, demand) => {
                     alignment: AlignmentType.JUSTIFIED,
                     spacing: { after: 120 },
                     children: [
+                        new TextRun({ text: 'Visit Summary' + ': ', bold: true, size: 24 }),
+                        new TextRun({ text: treatment?.visitSummary, size: 24 }),
+                    ]
+                }),
+                new Paragraph({
+                    alignment: AlignmentType.JUSTIFIED,
+                    spacing: { after: 120 },
+                    children: [
                         new TextRun({ text: 'Patient Complaints' + ': ', bold: true, size: 24 }),
                         new TextRun({ text: treatment?.primaryVisitComplaint, size: 24 }),
                     ]
@@ -652,21 +661,23 @@ const createMedicalChronology = async (domainName, caseId, demand) => {
                 }),
                 //put image findings section styled like MRI findings here
                 //only add findings section if imageFindings array's length is greater than 0
-                !(treatment?.imageFindings !== undefined && treatment?.imageFindings.length > 0) ? [] : new Paragraph({ children: [new TextRun({ text: 'Findings:' + '\n', bold: true, size: 24 })] }),
-                ...treatment?.imageFindings.map(finding =>
-                    new Paragraph({
-                        // spacing: { after: 120 },
-                        alignment: AlignmentType.JUSTIFIED,
-                        numbering: {
-                            reference: "my-unique-bullet-points",
-                            level: 0,
-                        },
-                        children: [new TextRun({ text: finding, size: 24 })]
-                    })
-                ),
+                ...(treatment?.imageFindings !== undefined && treatment?.imageFindings.length > 0) ? 
+                    [new Paragraph({ children: [new TextRun({ text: 'Findings:' + '\n', bold: true, size: 24 })] }),
+                        ...treatment?.imageFindings.map(finding =>
+                            new Paragraph({
+                                // spacing: { after: 120 },
+                                alignment: AlignmentType.JUSTIFIED,
+                                numbering: {
+                                    reference: "my-unique-bullet-points",
+                                    level: 0,
+                                },
+                                children: [new TextRun({ text: finding, size: 24 })]
+                            })
+                        )] : [],
                 new Paragraph({ children: [new TextRun({ text: '\n', bold: true, size: 24 })] }),
                 //put additional sections code here
-                ...treatment?.additionalSections.map(section =>
+                ...!(treatment?.additionalSections !== undefined && treatment?.additionalSections.length > 0) ? [] :
+                treatment?.additionalSections.map(section =>
                     new Paragraph({
                         alignment: AlignmentType.JUSTIFIED,
                         spacing: { after: 120 },
@@ -676,8 +687,8 @@ const createMedicalChronology = async (domainName, caseId, demand) => {
                         ]
                     }),
                 ),
-                // new Paragraph({ children: [new TextRun({ text: '\n', bold: true, size: 24 })] }),
-                // new Paragraph({ children: [new TextRun({ text: '\n', bold: true, size: 24 })] }),
+                new Paragraph({ children: [new TextRun({ text: '\n', bold: true, size: 24 })] }),
+                new Paragraph({ children: [new TextRun({ text: '\n', bold: true, size: 24 })] }),
             ]
             hospitalTreatmentData = [...hospitalTreatmentData, ...sections]
         })
@@ -1159,47 +1170,48 @@ const createMedicalChronology = async (domainName, caseId, demand) => {
                         //console.log("inside processing hospital records")
                         treatmentText = values?.treatmentDates?.flatMap((date, index) => {
                             return [
-                                new Paragraph({ children: [new TextRun({ text: '\n' })] }),
-                                new Paragraph({
-                                    alignment: AlignmentType.CENTER,
-                                    shading: {
-                                        type: index == 0 ? ShadingType.SOLID : "",
-                                        color: index == 0 ? "001C66" : "FFFFFF",
-                                        fill: index == 0 ? "001C66" : "FFFFFF",
-                                    },
-                                    children: [
-                                        new TextRun({
-                                            text: index == 0 ? ' Medical Provider: ' : "" + '\n', bold: true, size: 24, color: 'FFFFFF'
-                                        }),
+                                ...(index === 0 ? [
+                                    new Paragraph({
+                                        alignment: AlignmentType.CENTER,
+                                        shading: {
+                                            type: ShadingType.SOLID,
+                                            color: "001C66",
+                                            fill: "001C66",
+                                        },
+                                        children: [
+                                            new TextRun({
+                                                text: ' Medical Provider: ', bold: true, size: 24, color: 'FFFFFF'
+                                            }),
 
-                                        new TextRun({ text: index == 0 ? values?.name : "", size: 24, bold: true, color: 'FFFFFF' }),
-                                    ]
-                                }),
-                                new Paragraph({
-                                    alignment: AlignmentType.CENTER,
-                                    shading: {
-                                        type: index == 0 ? ShadingType.SOLID : "",
-                                        color: index == 0 ? "001C66" : "FFFFFF",
-                                        fill: index == 0 ? "001C66" : "FFFFFF",
-                                    },
-                                    children: [
-                                        new TextRun({ text: index == 0 ? 'Dates of Service' + ':' : "", bold: true, size: 24, color: 'FFFFFF' }),
-                                        new TextRun({ text: index == 0 ? date.admittedDate + '-' + date.dischargeDate : "", size: 24, color: 'FFFFFF' }),
-                                    ]
-                                }),
+                                            new TextRun({ text: values?.name, size: 24, bold: true, color: 'FFFFFF' }),
+                                        ]
+                                    }),
+                                    new Paragraph({
+                                        alignment: AlignmentType.CENTER,
+                                        shading: {
+                                            type: ShadingType.SOLID,
+                                            color: "001C66",
+                                            fill: "001C66",
+                                        },
+                                        children: [
+                                            new TextRun({ text: 'Dates of Service' + ':', bold: true, size: 24, color: 'FFFFFF' }),
+                                            new TextRun({ text: date.admittedDate + '-' + date.dischargeDate, size: 24, color: 'FFFFFF' }),
+                                        ]
+                                    }),
 
-                                new Paragraph({
-                                    alignment: AlignmentType.CENTER,
-                                    shading: {
-                                        type: index == 0 ? ShadingType.SOLID : "",
-                                        color: index == 0 ? "001C66" : "FFFFFF",
-                                        fill: index == 0 ? "001C66" : "FFFFFF",
-                                    },
-                                    children: [
-                                        new TextRun({ text: 'Chief Complaint' + ':', bold: true, size: 24, }),
-                                        new TextRun({ text: date.chiefComplaint, size: 24, }),
-                                    ]
-                                }),
+                                    new Paragraph({
+                                        alignment: AlignmentType.CENTER,
+                                        shading: {
+                                            type: ShadingType.SOLID,
+                                            color: "001C66",
+                                            fill: "001C66",
+                                        },
+                                        children: [
+                                            new TextRun({ text: 'Chief Complaint' + ':', bold: true, size: 24, }),
+                                            new TextRun({ text: date.chiefComplaint, size: 24, }),
+                                        ]
+                                    })
+                                ] : []),
                                 ...getHospitalTreatmentData(date?.treatmentSummary ? date?.treatmentSummary : [], bookmarkId),
                                 new Paragraph({ children: [new TextRun({ text: '\n' })] }),
 

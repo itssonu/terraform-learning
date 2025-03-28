@@ -21,7 +21,8 @@ const { patchDocument, PatchType, Document,
     NumberFormat,
     Footer,
     TabStopType } = require("docx");
-const fs = require('fs')
+    const AdmZip = require("adm-zip");
+    const { DOMParser,XMLSerializer  } = require("xmldom");
 
 const totalSettlementAmount = (amount, postNonEconomicsDamagesFinalAmount, pastNonEconomicDamages) => {
     const postNonEconimicAmount = parseFloat(postNonEconomicsDamagesFinalAmount.replaceAll(',', ''))
@@ -41,6 +42,7 @@ const createAndSaveTemplateReportWord = async (
         faulterName,
         medicalRecordsDetailsDoc,
         priorMedicalRecordsDetailsDoc,
+        simplifiedMedicalRecordsDetailsDoc,
         executiveSummaryDoc,
         llmLibilityDescriptionDoc,
         LLMFactsOfIncident,
@@ -103,7 +105,8 @@ const createAndSaveTemplateReportWord = async (
         lossOfIncomeExhibitSectionDoc,
         lossOfEarningsHyperlinkNumber,
         futureExpenseHyperlinkNumber,
-        futureExpenseExhibitSectionDoc
+        futureExpenseExhibitSectionDoc,
+        totalFutureMedicalBillsAmount,
     }
 ) => {
      
@@ -398,7 +401,7 @@ const createAndSaveTemplateReportWord = async (
                                     alignment: AlignmentType.RIGHT,
                                     spacing: { after: 10, before: 10 }, 
                                     children: [new TextRun({
-                                        children: [``],
+                                        children: [`$`],
                                         size: 24, font: fontName 
 
                                     }),]
@@ -446,7 +449,7 @@ const createAndSaveTemplateReportWord = async (
                                     alignment: AlignmentType.RIGHT,
                                     spacing: { after: 10, before: 10 }, 
                                     children: [new TextRun({
-                                        children: [``],
+                                        children: [`${totalFutureMedicalBillsAmount === 'NaN' ? 0 : totalFutureMedicalBillsAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
                                         size: 24, font: fontName 
 
                                     }),]
@@ -524,6 +527,182 @@ const createAndSaveTemplateReportWord = async (
                             },
                             children: [
                                 new Paragraph({ spacing: { after: 10, before: 10 }, alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `${totalSettlementAmount(amount, postNonEconomicsDamagesFinalAmount, pastNonEconomicDamages)}`, size: 24, bold: true, font: fontName  })] }),
+                            ],
+
+                            borders: {
+                                top: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" }, // Top border
+                                bottom: { style: BorderStyle.SINGLE, size: 3, color: "ffffff" }, // Bottom border
+                                left: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" }, // Left border
+                                right: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" }, // Right border
+                            },
+                        }),
+                    ],
+                }),
+            ],
+            alignment: AlignmentType.CENTER,
+        })
+    ]
+
+    const altSettlementDemandTableDoc = [
+        new Table({
+            rows: [
+                new TableRow({
+                    children: [
+                        new TableCell({
+                            width: {
+                                size: 4000,
+                                type: WidthType.DXA,
+                            },
+
+                            children: [
+                                new Paragraph({
+                                    alignment: AlignmentType.LEFT,
+                                    children: [
+                                        new TextRun({
+                                            children: [`a) Medical Expenses`],
+                                            size: 24,
+
+                                        }),]
+                                }),
+                                new Paragraph({
+                                    alignment: AlignmentType.LEFT,
+                                    children: [new TextRun({
+                                        children: [`b) Future Medical Expenses`],
+                                        size: 24,
+
+                                    }),]
+                                }),
+                                new Paragraph({
+                                    alignment: AlignmentType.LEFT,
+                                    children: [new TextRun({
+                                        children: [`c) Loss of Income`],
+                                        size: 24,
+
+                                    }),]
+                                })
+                            ],
+                            borders: {
+                                top: { style: BorderStyle.SINGLE, size: 1, color: "ffffff" }, // Top border
+                                bottom: { style: BorderStyle.SINGLE, size: 3, color: "000000" }, // Bottom border
+                                left: { style: BorderStyle.SINGLE, size: 1, color: "ffffff" }, // Left border
+                                right: { style: BorderStyle.SINGLE, size: 1, color: "ffffff" }, // Right border
+                            },
+                        }),
+                        new TableCell({
+                            children: [
+                                new Paragraph({
+                                    alignment: AlignmentType.RIGHT,
+                                    children: [new TextRun({
+                                        children: [`$`],
+                                        size: 24,
+                                    }),]
+                                }),
+                                new Paragraph({
+                                    alignment: AlignmentType.RIGHT,
+                                    children: [new TextRun({
+                                        children: [``],
+                                        size: 24,
+
+                                    }),]
+                                }),
+                                new Paragraph({
+                                    alignment: AlignmentType.RIGHT,
+                                    children: [new TextRun({
+                                        children: [``],
+                                        size: 24,
+
+                                    }),]
+                                })
+                            ],
+                            borders: {
+                                top: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" }, // Top border
+                                bottom: { style: BorderStyle.SINGLE, size: 3, color: "000000" }, // Bottom border
+                                left: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" }, // Left border
+                                right: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" }, // Right border
+                            },
+                        }),
+                        new TableCell({
+                            width: {
+                                size: 1000,
+                                type: WidthType.DXA,
+                            },
+                            children: [
+                                new Paragraph({
+                                    alignment: AlignmentType.RIGHT,
+                                    children: [new TextRun({
+                                        children: [`${amount === 'NaN' ? 0 : amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+                                        size: 24,
+                                    }),]
+                                }),
+                                new Paragraph({
+                                    alignment: AlignmentType.RIGHT,
+                                    children: [new TextRun({
+                                        children: [`${totalFutureMedicalBillsAmount === 'NaN' ? 0 : totalFutureMedicalBillsAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`], //need to add future medical expense value here
+                                        size: 24,
+
+                                    }),]
+                                }),
+                                new Paragraph({
+                                    alignment: AlignmentType.RIGHT,
+                                    children: [new TextRun({
+                                        children: [lossofIncomeCalculatedAmount.slice(1)],
+                                        size: 24,
+                                    }),]
+                                })
+                            ],
+                            borders: {
+                                top: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" }, // Top border
+                                bottom: { style: BorderStyle.SINGLE, size: 3, color: "000000" }, // Bottom border
+                                left: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" }, // Left border
+                                right: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" }, // Right border
+                            },
+                        }),
+                    ],
+                }),
+                new TableRow({
+                    children: [
+                        new TableCell({
+                            width: {
+                                size: 1035,
+                                type: WidthType.DXA,
+                            },
+                            children: [
+                                new Paragraph({
+                                    children: [new TextRun({ text: "TOTAL", size: 24, font: fontName, bold: 'true' })]
+                                })
+                            ],
+                            borders: {
+                                top: { style: BorderStyle.SINGLE, size: 1, color: "ffffff" }, // Top border
+                                bottom: { style: BorderStyle.SINGLE, size: 3, color: "ffffff" }, // Bottom border
+                                left: { style: BorderStyle.SINGLE, size: 1, color: "ffffff" }, // Left border
+                                right: { style: BorderStyle.SINGLE, size: 1, color: "ffffff" }, // Right border
+                            },
+                        }),
+                        new TableCell({
+                            width: {
+                                size: 2535,
+                                type: WidthType.DXA,
+                            },
+                            children: [
+                                new Paragraph({
+                                    alignment: AlignmentType.RIGHT,
+                                    children: [new TextRun({ children: [`$`], size: 24, bold: true })]
+                                })
+                            ],
+                            borders: {
+                                top: { style: BorderStyle.SINGLE, size: 1, color: "ffffff" }, // Top border
+                                bottom: { style: BorderStyle.SINGLE, size: 3, color: "ffffff" }, // Bottom border
+                                left: { style: BorderStyle.SINGLE, size: 1, color: "ffffff" }, // Left border
+                                right: { style: BorderStyle.SINGLE, size: 1, color: "ffffff" }, // Right border
+                            },
+                        }),
+                        new TableCell({
+                            width: {
+                                size: 300,
+                                type: WidthType.DXA,
+                            },
+                            children: [
+                                new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `${totalSettlementAmount(amount, postNonEconomicsDamagesFinalAmount, pastNonEconomicDamages)}`, size: 24, font: fontName, bold: 'true' })] }),
                             ],
 
                             borders: {
@@ -766,6 +945,11 @@ const createAndSaveTemplateReportWord = async (
                     children: priorMedicalRecordsDetailsDoc || []
                 },
 
+                simplifiedMedicalRecordsDetails: {
+                    type: PatchType.DOCUMENT,
+                    children: simplifiedMedicalRecordsDetailsDoc || []
+                },
+
                 medicalRecordsDetails: {
                     type: PatchType.DOCUMENT,
                     children: medicalRecordsDetailsDoc || []
@@ -820,13 +1004,18 @@ const createAndSaveTemplateReportWord = async (
                 },
 
                 propertyDamagePhotos: {
-                    type: PatchType.DOCUMENT,
+                type: PatchType.DOCUMENT,
                     children: selectedAccidentFilesDoc || []
                 },
 
                 settlementDemandTable: {
                     type: PatchType.DOCUMENT,
                     children: [...setttlementDemandTableDoc] || []
+                },
+
+                altSettlementDemandTable: {
+                    type: PatchType.DOCUMENT,
+                    children: [...altSettlementDemandTableDoc] || []
                 },
 
                 bodilyInjuryPhotos: {
@@ -930,7 +1119,7 @@ const createAndSaveTemplateReportWord = async (
                         new Paragraph({
                             children: [
                                 new Bookmark({
-                                    id: 'preMedicalRecordsExhibitAnchor',
+                                    id: 'Exhibit2Id',
                                     children: [new TextRun('‎')]
                                 })
                             ]
@@ -1000,6 +1189,11 @@ const createAndSaveTemplateReportWord = async (
                             ]
                         })
                     ]
+                },
+
+                totalFutureMedicalBillsAmount: {
+                    type: PatchType.PARAGRAPH,
+                    children: [new TextRun({ text: `$${totalFutureMedicalBillsAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` })]
                 },
 
                 futureExpensesLinkSentence: {
@@ -1106,10 +1300,87 @@ const createAndSaveTemplateReportWord = async (
             },
 
             keepOriginalStyles: true
-        })
+        });
+
+        function processTagsInDocx(docxBuffer, tagConfigs) {
+            const zip = new AdmZip(docxBuffer);
+            const docXmlEntry = zip.getEntry("word/document.xml");
+        
+            if (!docXmlEntry) {
+                throw new Error("Invalid DOCX file: document.xml not found");
+            }
+        
+            let xmlString = zip.readAsText(docXmlEntry); // Read the XML content
+        
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+            tagConfigs.forEach(({ startTag, endTag, keepContent }) => {
+                const textNodes = Array.from(xmlDoc.getElementsByTagName("w:t"));
+                
+                let startIndex = -1,
+                endIndex = -1;
+                
+                for (let i = 0; i < textNodes.length; i++) {
+                    console.log("textNodes[i].textContent.trim()",textNodes[i].textContent.trim())
+        
+                    const text = textNodes[i].textContent.trim();
+                    if (text.includes(startTag)) startIndex = i;
+                    if (text.includes(endTag)) {
+                        endIndex = i;
+                        break;
+                    }
+                }
+        
+                const checkAndRemoveSymbol = (index) => {
+                    if (index > 0) {
+                        let prevNode = textNodes[index - 1];
+                        if (prevNode && (prevNode.textContent.trim() === "<" || prevNode.textContent.trim() === ">")) {
+                            prevNode.parentNode.removeChild(prevNode);
+                        }
+                    }
+                    if (index < textNodes.length - 1) {
+                        let nextNode = textNodes[index + 1];
+                        if (nextNode && (nextNode.textContent.trim() === "<" || nextNode.textContent.trim() === ">")) {
+                            nextNode.parentNode.removeChild(nextNode);
+                        }
+                    }
+                };
+        
+                if (startIndex !== -1 && endIndex !== -1) {
+                    if (!keepContent) {
+                        // Remove all nodes from startIndex to endIndex, including `<` and `>`
+                        for (let i = endIndex; i >= startIndex; i--) {
+                            textNodes[i].parentNode.removeChild(textNodes[i]);
+                        }
+                    } else {
+                        // Remove only the tags but keep the content inside
+                        textNodes[startIndex].textContent = textNodes[startIndex].textContent.replace(startTag, "").trim();
+                        textNodes[endIndex].textContent = textNodes[endIndex].textContent.replace(endTag, "").trim();
+                    }
+                    checkAndRemoveSymbol(startIndex);
+                    checkAndRemoveSymbol(endIndex);
+                }
+            });
+        
+            const updatedXML= new XMLSerializer().serializeToString(xmlDoc);
+        
+            // **Update the ZIP with modified XML**
+            zip.updateFile(docXmlEntry.entryName, Buffer.from(updatedXML, "utf8"));
+        
+            // **Return the modified DOCX as a buffer**
+            return zip.toBuffer();
+        }
+        
+        
+        // Example Usage
+        const tagConfigs = [
+            { startTag: "priorMedicalSecSTART", endTag: "priorMedicalSecEND", keepContent: casePreMedicalRecordsParagraphs?.length > 0 ? true : false }, // Remove content between these tags
+        ];
+
+        let updatedBuffer = processTagsInDocx(templateFile, tagConfigs);
 
         // Patch the document a first time:
-        let patchedDocxTemplate = await patchTheDocument(templateFile)
+        let patchedDocxTemplate = await patchTheDocument(updatedBuffer)
         for (let i = 0; i < 10; i++) { //why 10 here??
             patchedDocxTemplate = await patchTheDocument(Buffer.from(patchedDocxTemplate))
         }
