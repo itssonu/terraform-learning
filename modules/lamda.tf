@@ -30,32 +30,32 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
 resource "aws_lambda_function" "api" {
   function_name = "${local.name_prefix}-api"
   role          = aws_iam_role.api.arn
-  image_uri = "${aws_ecr_repository.api.repository_url}:latest"
-  package_type = "Image"
+  image_uri     = "${aws_ecr_repository.api.repository_url}:latest"
+  package_type  = "Image"
   timeout       = 30
   memory_size   = 1024
   vpc_config {
-    subnet_ids = module.vpc.private_subnets
+    subnet_ids         = module.vpc.private_subnets
     security_group_ids = [aws_security_group.allow_in_vpc.id]
   }
   environment {
     variables = {
-      JWT_PRIVATEKEY="JWT_TOKEN"
+      JWT_PRIVATEKEY = "JWT_TOKEN"
       JWT_EXPIRES_IN = "2d"
-      BCRYPT_HASH = 10
+      BCRYPT_HASH    = 10
       # BASE_URL="https://${aws_cloudfront_distribution.www.domain_name}"
-      DB_HOST_URL="mongodb://${aws_docdb_cluster.docdb.master_username}:${aws_docdb_cluster.docdb.master_password}@${aws_docdb_cluster.docdb.endpoint}:${aws_docdb_cluster.docdb.port}/?replicaSet=rs0&readPreference=secondaryPreferred&retryWrites=false"
-      OPENSSL_CONF="/dev/null"
-      AWS_S3_BUCKET = aws_s3_bucket.generalBucket.bucket
-      SENDGRID_API_KEY=var.sendgrid_api_key
-      SENDGRID_EMAIL_SENDER=var.sendgrid_email_sender
-      ANTHROPIC_API_KEY=var.anthropic_api_key
+      DB_HOST_URL           = "mongodb://${aws_docdb_cluster.docdb.master_username}:${aws_docdb_cluster.docdb.master_password}@${aws_docdb_cluster.docdb.endpoint}:${aws_docdb_cluster.docdb.port}/?replicaSet=rs0&readPreference=secondaryPreferred&retryWrites=false"
+      OPENSSL_CONF          = "/dev/null"
+      AWS_S3_BUCKET         = aws_s3_bucket.generalBucket.bucket
+      SENDGRID_API_KEY      = var.sendgrid_api_key
+      SENDGRID_EMAIL_SENDER = var.sendgrid_email_sender
+      ANTHROPIC_API_KEY     = var.anthropic_api_key
     }
   }
 
   architectures = ["arm64"]
 
-  depends_on = [ aws_docdb_cluster.docdb, aws_security_group.allow_in_vpc, aws_iam_role.api, aws_ecr_repository.api, aws_cloudwatch_log_group.api, aws_s3_bucket.generalBucket ]
+  depends_on = [aws_docdb_cluster.docdb, aws_security_group.allow_in_vpc, aws_iam_role.api, aws_ecr_repository.api, aws_cloudwatch_log_group.api, aws_s3_bucket.generalBucket]
 }
 
 resource "aws_cloudwatch_log_group" "api" {
