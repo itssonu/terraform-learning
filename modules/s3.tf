@@ -1,3 +1,17 @@
+resource "aws_s3_bucket" "generalBucket" {
+  bucket = "${local.name_prefix}-general-bucket"
+  tags = local.common_tags
+  force_destroy = true
+}
+
+resource "aws_s3_bucket_public_access_block" "generalBucket" {
+  bucket = aws_s3_bucket.generalBucket.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
 resource "aws_s3_bucket" "wwww" {
   bucket = "www-${local.name_prefix}"
   tags = local.common_tags
