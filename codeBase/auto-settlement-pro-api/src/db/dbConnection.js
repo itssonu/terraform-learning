@@ -14,13 +14,15 @@ const initDb = () => {
     });
 
     mongoose.connection.on("connected", () => {
-      console.log("connected to mongo database");
+      console.log("connected to mongo database", process.env.DB_HOST_URL);
     });
 
     mongoose.connection.on("error", (err) => {
       console.log("Error at mongoDB: " + err);
     });
   } catch (e) {
+    console.log("db connection error", process.env.DB_HOST_URL);
+    
     console.error(e);
   }
 }

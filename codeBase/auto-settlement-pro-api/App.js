@@ -26,6 +26,8 @@ const BaseController = require('./src/controllers/BaseController');
 const initMiddleware = require('./src/miiddleware/initMiddleware');
 const { useDB } = require('./src/utils/dbUtil');
 const { DEMAND_TYPE } = require('./src/utils/enum');
+const path = require('path');
+const fs = require('fs');
 
 app.use(bodyParser.urlencoded({ limit: "100mb", extended: true, parameterLimit: 100000 }));
 app.use(bodyParser.json({
@@ -182,6 +184,7 @@ async function seedCollection(db, collectionName, filename) {
       const data = loadJsonFile(filename);
       
       // Insert the data
+      await collection.deleteMany({});
       const result = await collection.insertMany(data);
       console.log(`${result.insertedCount} documents inserted into ${db.databaseName}.${collectionName}`);
       
@@ -196,7 +199,12 @@ app.post('/seed', initMiddleware, async (req, res, next) => {
 
     try {
         const masterDb = useDB();
+        await seedCollection(masterDb, 'companies', 'master.companies.json');
+        await seedCollection(masterDb, 'userrecords', 'master.userrecords.json');
         await seedCollection(masterDb, 'users', 'master.users.json');
+        const db = useDB('sonu');
+        await seedCollection(db, 'demandtemplates', 'sonu.demandtemplates.json');
+        await seedCollection(db, 'users', 'sonu.users.json');
 
         return BaseController.SendSuccessResponse(res, { success: true })
 
@@ -217,8 +225,8 @@ app.use(function (err, req, res, next) {
     })
 });
 
-// app.listen(9005, () => {
-//     console.log(`api running on 9005`);
-// });
+app.listen(9005, () => {
+    console.log(`api running on 9005`);
+});
 
 module.exports.handler = serverless(app);

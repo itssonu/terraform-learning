@@ -1,7 +1,4 @@
 [{
-  "_id": {
-    "$oid": "66db43c26d57a1f4c19b09d7"
-  },
   "firstName": "sonu",
   "lastName": "INC",
   "companyName": "sonu",

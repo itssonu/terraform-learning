@@ -1,7 +1,4 @@
 [{
-  "_id": {
-    "$oid": "676430973997ab1bff4e3f2b"
-  },
   "template": {
     "firmName": "<p><strong>Easton &amp; Easton, LLP</strong></p><p><br></p><p>Attorney Name</p>",
     "firmAddress": "<p class=\"ql-align-center\">655 Town Center Drive</p><p class=\"ql-align-center\">Suite 1850</p><p class=\"ql-align-center\">Costa Mesa, CA 92626</p>",

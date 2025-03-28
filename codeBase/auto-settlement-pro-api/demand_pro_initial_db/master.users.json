@@ -1,7 +1,5 @@
 [{
-  "_id": {
-    "$oid": "64cba13f98351c2d0209982c"
-  },
+
   "firstName": "pradeep",
   "lastName": "negi",
   "mobileNumber": "123456789",

@@ -36,17 +36,26 @@ resource "aws_lambda_function" "api" {
   memory_size   = 1024
   vpc_config {
     subnet_ids = module.vpc.private_subnets
-    security_group_ids = [aws_security_group.allow-in.id]
+    security_group_ids = [aws_security_group.allow_in_vpc.id]
   }
   environment {
     variables = {
-      foo = "bar"
+      JWT_PRIVATEKEY="JWT_TOKEN"
+      JWT_EXPIRES_IN = "2d"
+      BCRYPT_HASH = 10
+      # BASE_URL="https://${aws_cloudfront_distribution.www.domain_name}"
+      DB_HOST_URL="mongodb://${aws_docdb_cluster.docdb.master_username}:${aws_docdb_cluster.docdb.master_password}@${aws_docdb_cluster.docdb.endpoint}:${aws_docdb_cluster.docdb.port}/?replicaSet=rs0&readPreference=secondaryPreferred&retryWrites=false"
+      OPENSSL_CONF="/dev/null"
+      AWS_S3_BUCKET = var.aws_s3_bucket
+      SENDGRID_API_KEY=var.sendgrid_api_key
+      SENDGRID_EMAIL_SENDER=var.sendgrid_email_sender
+      ANTHROPIC_API_KEY=var.anthropic_api_key
     }
   }
 
   architectures = ["arm64"]
 
-  depends_on = [ aws_security_group.allow-in, aws_iam_role.iam_for_lambda, aws_ecr_repository.api, aws_cloudwatch_log_group.api ]
+  depends_on = [ aws_docdb_cluster.docdb, aws_security_group.allow_in_vpc, aws_iam_role.iam_for_lambda, aws_ecr_repository.api, aws_cloudwatch_log_group.api ]
 }
 
 resource "aws_cloudwatch_log_group" "api" {

@@ -1,4 +1,4 @@
-resource "aws_security_group" "allow-in" {
+resource "aws_security_group" "allow_in_vpc" {
   name_prefix = "${local.name_prefix}-lambda-sg"
   vpc_id      = module.vpc.vpc_id
 
