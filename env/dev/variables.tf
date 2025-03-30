@@ -18,11 +18,6 @@ variable "domain_name" {
   type        = string
 }
 
-variable "aws_s3_bucket" {
-  description = "Environment"
-  type        = string
-}
-
 variable "sendgrid_api_key" {
   description = "Environment"
   type        = string
