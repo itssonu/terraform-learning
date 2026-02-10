@@ -19,7 +19,6 @@
     "aws-sdk": "^2.1668.0",
     "axios": "^1.4.0",
     "body-parser": "^1.20.2",
-    "canvas": "^2.11.2",
     "cors": "^2.8.5",
     "docx": "^8.2.0",
     "dotenv": "^16.3.1",
@@ -36,18 +35,8 @@
     "nodemon": "^2.0.22",
     "openai": "^3.3.0",
     "pdf-creator-node": "^2.3.5",
-    "pdf-lib": "^1.17.1",
-    "pdf-to-img": "^4.0.0",
-    "pdf2img": "^0.5.0",
-    "pdf2pic": "^3.1.1",
-    "pdfjs-dist": "^3.2.146",
-    "pdfkit": "^0.14.0",
-    "phantomjs-prebuilt": "^2.1.16",
-    "pizzip": "^3.1.4",
     "serverless-http": "^3.2.0",
-    "sharp": "^0.33.4",
     "socket.io": "^4.7.2",
-    "web-streams-polyfill": "^3.2.1",
     "xmldom": "^0.6.0"
   }
 }

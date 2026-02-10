@@ -8,6 +8,8 @@ import 'bootstrap/dist/js/bootstrap.bundle.min';
 
 function App() {
   useEffect(() => {
+    console.log(process.env);
+    
   }, [])
   return (
     <SkeletonTheme>

@@ -12,3 +12,7 @@ output "cloudfront_domain_name" {
 output "api_base_url" {
   value = module.project_sonu.api_base_url
 }
+
+output "pfq_base_url" {
+  value = module.project_sonu.pfq_base_url
+}

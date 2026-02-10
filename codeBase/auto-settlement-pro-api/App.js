@@ -225,8 +225,8 @@ app.use(function (err, req, res, next) {
     })
 });
 
-app.listen(9005, () => {
-    console.log(`api running on 9005`);
-});
+// app.listen(9005, () => {
+//     console.log(`api running on 9005`);
+// });
 
 module.exports.handler = serverless(app);

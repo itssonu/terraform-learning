@@ -3,7 +3,7 @@ const bodyParser = require('body-parser')
 require('dotenv').config();
 const fileUpload = require("express-fileupload");
 const db = require('./src/db/dbConnection');
-require('web-streams-polyfill');
+// require('web-streams-polyfill');
 const { processMedicalFileQueue, processMedicalBillFileQueue, processandGeneratePoliceReport, processandFutureExpenseReport, processPreMedicalFileQueue, getFileTextAndImage } = require('./ProcessingFileService/ProcessingFileQueueService');
 const { policeReportChatGptProcessor } = require('./ProcessingFileService/ProcessingPoilceChatGptService');
 const { processingExpenseChatGptProcessor } = require('./ProcessingFileService/ProcessingExpenseChatGptService');

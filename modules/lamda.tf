@@ -78,8 +78,6 @@ resource "aws_lambda_function" "api" {
     }
   }
 
-  architectures = ["arm64"]
-
   depends_on = [
     aws_docdb_cluster.docdb, 
     aws_security_group.allow_in_vpc, 

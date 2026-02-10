@@ -13,3 +13,7 @@ output "cloudfront_domain_name" {
 output "api_base_url" {
   value = aws_lambda_function_url.api.function_url
 }
+
+output "pfq_base_url" {
+  value = "http://${aws_lb.pfq_alb.dns_name}"
+}
